@@ -46,7 +46,7 @@
   .welcome{background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe;border-radius:12px;padding:14px;margin-bottom:12px}
   .welcome h2{margin:0 0 6px;font-size:16px}
   .welcome ol{padding-left:20px;margin:6px 0;font-size:14px;line-height:1.7}
-  nav button{flex:1;min-width:56px;border:0;background:none;padding:12px 2px;font-size:13px;color:var(--sub);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  nav button{flex:1;min-width:0;border:0;background:none;padding:12px 0;font-size:12px;color:var(--sub);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
   nav button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
   nav button .badge{display:inline-block;background:var(--expired);color:#fff;border-radius:999px;font-size:10px;padding:1px 6px;margin-left:3px}
   main{max-width:720px;margin:0 auto;padding:12px 12px calc(90px + env(safe-area-inset-bottom))}
@@ -675,12 +675,14 @@ $('#export').onclick = ()=>{ const a=document.createElement('a'); a.href=URL.cre
 $('#importBtn').onclick = ()=>$('#importFile').click();
 $('#importFile').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!Array.isArray(s.items)) throw 0; if(confirm('今のデータを読み込んだ内容で置き換えますか？')){ state=Object.assign({items:[],history:[],shopping:[],staples:[]}, s); save(); renderAll(); toast('読み込みました'); } }catch(err){ alert('ファイルの形式が違います'); } }; r.readAsText(f); e.target.value=''; };
 $('#wipe').onclick = ()=>{ if(confirm('全データを削除します。よろしいですか？')&&confirm('本当に削除しますか？元に戻せません。')){ state={items:[],history:[],shopping:[],staples:[]}; save(); renderAll(); } };
-$('#sample').onclick = ()=>{
+function loadSample(silent){
   const add=(n,d,q,u)=>{ const p=PRESETS.find(x=>x[0]===n)||[n,'その他',7,'個','冷蔵']; state.items.push({id:uid(),name:n,cat:p[1],loc:p[4],qty:q??1,unit:u??p[3],exp:d===null?null:addDays(d),memo:'',staple:['牛乳','卵'].includes(n),added:todayStr()}); };
   add('牛乳',1); add('卵',6,8); add('豆腐',-1); add('鶏もも肉',0,300,'g'); add('キャベツ',4,0.5,'玉'); add('玉ねぎ',20,3); add('にんじん',9,2); add('じゃがいも',25,4); add('もやし',1); add('長ねぎ',3); add('ごはん(冷凍)',30,3); add('味噌',150); add('ヨーグルト',2); add('食パン',2); add('ウインナー',5);
   ['牛乳','卵'].forEach(s=>{ if(!state.staples.includes(s)) state.staples.push(s); });
-  save(); renderAll(); showTab('list'); toast('サンプルを追加しました');
-};
+  state.history.unshift({id:uid(),name:'ほうれん草',cat:'野菜',type:'waste',date:todayStr(),exp:null},{id:uid(),name:'牛乳',cat:'乳製品・卵',type:'used',date:todayStr(),exp:null},{id:uid(),name:'納豆',cat:'大豆・加工品',type:'used',date:todayStr(),exp:null});
+  save(); renderAll(); if(!silent){ showTab('list'); toast('サンプルを追加しました'); }
+}
+$('#sample').onclick = ()=>loadSample(false);
 
 // ---------- 通知 ----------
 function settings(){ if(!state.settings) state.settings={notify:false, notifyDays:2, lastNotified:''}; return state.settings; }
@@ -760,6 +762,15 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){ navigator.servi
 // ---------- 全体 ----------
 function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderLog(); renderNotify(); }
 load(); fillSelects(); resetForm(); renderAll();
+// マニュアル用スクリーンショット: ?demo=1&tab=add&preset=牛乳 で見本データと画面を指定
+const qs = new URLSearchParams(location.search);
+if(qs.get('demo')==='1'){
+  if(!state.items.length) loadSample(true);
+  if(!state.shopping.length){ addShop('チーズ'); addShop('ひき肉'); }
+  if(qs.get('preset')) applyPreset(qs.get('preset'));
+  if(qs.get('tab')) showTab(qs.get('tab'));
+  if(qs.get('open')) document.querySelectorAll('.help details').forEach((d,i)=>d.open = (i===+qs.get('open')));
+}
 checkAndNotify();
 // 日付が変わったら再描画
 setInterval(renderAll, 60*1000);
