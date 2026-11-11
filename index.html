@@ -214,6 +214,24 @@
 
 <!-- 記録 -->
 <section id="tab-log">
+  <div class="card" id="shareCard">
+    <h2>家族と共有</h2>
+    <div id="shareOff">
+      <p class="hint">家族コードを作ると、同じコードを入れた端末どうしで同じ冷蔵庫を見られます（ログイン不要）。コードを知っている人は誰でも見られるので、家族以外には教えないでください。</p>
+      <button class="btn" id="shareStart" type="button">共有を始める（家族コードを作る）</button>
+      <div class="row" style="margin-top:8px">
+        <input id="shareCodeIn" placeholder="家族コードを入力（例: ABCD-EFGH-JKLM）" autocapitalize="characters">
+        <button class="btn secondary" id="shareJoin" type="button" style="flex:0 0 80px">参加</button>
+      </div>
+    </div>
+    <div id="shareOn" style="display:none">
+      <div class="hint">家族コード（家族のスマホでこのコードを入力するか、招待リンクを送ってください）</div>
+      <div id="shareCode" style="font-size:24px;font-weight:700;letter-spacing:2px;margin:4px 0;text-align:center"></div>
+      <div class="row"><button class="btn secondary" id="shareCopy" type="button">招待リンクをコピー</button><button class="btn secondary" id="shareSync" type="button">今すぐ同期</button></div>
+      <div class="hint" id="shareStatus" style="margin-top:8px"></div>
+      <button class="sm" id="shareLeave" type="button" style="margin-top:8px">この端末の共有をやめる</button>
+    </div>
+  </div>
   <div class="card">
     <h2>期限のお知らせ</h2>
     <label class="switch"><span>アプリを開いたときに期限が近い食材を通知する</span><input type="checkbox" id="n-on"></label>
@@ -414,7 +432,11 @@ const RECIPES = [
 const KEY = 'fridge-app-v1';
 let state = {items:[], history:[], shopping:[], staples:[]};
 function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) state = Object.assign(state, s); }catch(e){} }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('保存できない環境です（この表示中だけデータが残ります）'); } }
+function saveLocal(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('保存できない環境です（この表示中だけデータが残ります）'); } }
+function save(){ saveLocal(); if(typeof schedulePush==='function') schedulePush(); }
+// 共有時の衝突解決用: 変更時刻と削除の記録
+function touch(x){ x.mtime=Date.now(); return x; }
+function tomb(id){ state.tombstones=(state.tombstones||[]).filter(t=>t.id!==id); state.tombstones.push({id,t:Date.now()}); if(state.tombstones.length>300) state.tombstones=state.tombstones.slice(-300); }
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -510,14 +532,14 @@ $('#itemList').onclick = e=>{
   const b=e.target.closest('button'); const card=e.target.closest('.item'); if(!b||!card) return;
   const id=card.dataset.id; const item=state.items.find(i=>i.id===id); if(!item) return;
   const act=b.dataset.act;
-  if(act==='dec'){ item.qty=Math.max(0, +(item.qty-1).toFixed(2)); if(item.qty<=0){ finish(item,'used'); toast(`${item.name} を使い切りました`); } else { save(); renderAll(); } }
+  if(act==='dec'){ item.qty=Math.max(0, +(item.qty-1).toFixed(2)); touch(item); if(item.qty<=0){ finish(item,'used'); toast(`${item.name} を使い切りました`); } else { save(); renderAll(); } }
   else if(act==='used'){ finish(item,'used'); toast(`${item.name} を使い切りました`); }
   else if(act==='waste'){ if(confirm(`${item.name} を廃棄として記録しますか？`)){ finish(item,'waste'); toast(`${item.name} を廃棄として記録`); } }
   else if(act==='shop'){ addShop(item.name); toast(`買い物リストに ${item.name} を追加`); }
   else if(act==='edit'){ editItem(item); }
 };
 function finish(item, type){
-  state.items = state.items.filter(i=>i.id!==item.id);
+  state.items = state.items.filter(i=>i.id!==item.id); tomb(item.id);
   state.history.unshift({id:uid(), name:item.name, cat:item.cat, type, date:todayStr(), exp:item.exp||null});
   state.history = state.history.slice(0,300);
   if(item.staple){ if(!state.staples.includes(item.name)) state.staples.push(item.name); addShop(item.name, true); }
@@ -564,10 +586,10 @@ $('#form').onsubmit = e=>{
   if(data.staple && !state.staples.includes(data.name)) state.staples.push(data.name);
   if(!data.staple) state.staples = state.staples.filter(s=>s!==data.name);
   const id=$('#f-id').value;
-  if(id){ Object.assign(state.items.find(i=>i.id===id), data); toast('保存しました'); save(); resetForm(); showTab('list'); return; }
-  state.items.push(Object.assign({id:uid(), added:todayStr()}, data));
+  if(id){ touch(Object.assign(state.items.find(i=>i.id===id), data)); toast('保存しました'); save(); resetForm(); showTab('list'); return; }
+  state.items.push(touch(Object.assign({id:uid(), added:todayStr()}, data)));
   // 買い物リストに同名があればチェック済みに
-  state.shopping.forEach(s=>{ if(s.name===data.name) s.done=true; });
+  state.shopping.forEach(s=>{ if(s.name===data.name && !s.done){ s.done=true; touch(s); } });
   save(); toast(`${data.name} を追加しました`);
   const keep = $('#f-staple').checked; resetForm(); renderAll(); $('#f-name').focus();
 };
@@ -627,7 +649,7 @@ $('#aiPrompt').onclick = async ()=>{
 };
 
 // ---------- 買い物 ----------
-function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !s.done)) return; state.shopping.push({id:uid(), name, done:false, auto}); save(); renderShop(); }
+function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !s.done)) return; state.shopping.push(touch({id:uid(), name, done:false, auto})); save(); renderShop(); }
 $('#shopForm').onsubmit = e=>{ e.preventDefault(); const n=$('#shopName').value.trim(); if(n){ addShop(n); $('#shopName').value=''; } };
 function renderShop(){
   $('#shopList').innerHTML = state.shopping.length? state.shopping.map(s=>`<div class="shop ${s.done?'done':''}" data-id="${s.id}"><input type="checkbox" ${s.done?'checked':''}><span class="n">${esc(s.name)}${s.auto?' <span class="hint" style="display:inline">(常備品)</span>':''}</span><button class="sm" data-act="del">✕</button></div>`).join('') : '<div class="empty">買い物リストは空です</div>';
@@ -638,16 +660,16 @@ function renderShop(){
 }
 $('#shopList').onclick = e=>{
   const row=e.target.closest('.shop'); if(!row) return; const s=state.shopping.find(x=>x.id===row.dataset.id);
-  if(e.target.matches('input')){ s.done=e.target.checked; save(); renderShop(); }
-  if(e.target.dataset.act==='del'){ state.shopping=state.shopping.filter(x=>x!==s); save(); renderShop(); }
+  if(e.target.matches('input')){ s.done=e.target.checked; touch(s); save(); renderShop(); }
+  if(e.target.dataset.act==='del'){ state.shopping=state.shopping.filter(x=>x!==s); tomb(s.id); save(); renderShop(); }
 };
 $('#stapleList').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s, true); toast('買い物リストに追加'); } };
-$('#shopClear').onclick = ()=>{ state.shopping=state.shopping.filter(s=>!s.done); save(); renderShop(); };
+$('#shopClear').onclick = ()=>{ state.shopping.filter(s=>s.done).forEach(s=>tomb(s.id)); state.shopping=state.shopping.filter(s=>!s.done); save(); renderShop(); };
 let fridgeQueue=[];
 $('#shopToFridge').onclick = ()=>{
   fridgeQueue = state.shopping.filter(s=>s.done).map(s=>s.name);
   if(!fridgeQueue.length){ toast('チェックされた項目がありません'); return; }
-  state.shopping=state.shopping.filter(s=>!s.done); save();
+  state.shopping.filter(s=>s.done).forEach(s=>tomb(s.id)); state.shopping=state.shopping.filter(s=>!s.done); save();
   nextFromQueue();
 };
 function nextFromQueue(){
@@ -674,7 +696,7 @@ function renderLog(){
 $('#export').onclick = ()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,1)],{type:'application/json'})); a.download=`fridge-${todayStr()}.json`; a.click(); };
 $('#importBtn').onclick = ()=>$('#importFile').click();
 $('#importFile').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!Array.isArray(s.items)) throw 0; if(confirm('今のデータを読み込んだ内容で置き換えますか？')){ state=Object.assign({items:[],history:[],shopping:[],staples:[]}, s); save(); renderAll(); toast('読み込みました'); } }catch(err){ alert('ファイルの形式が違います'); } }; r.readAsText(f); e.target.value=''; };
-$('#wipe').onclick = ()=>{ if(confirm('全データを削除します。よろしいですか？')&&confirm('本当に削除しますか？元に戻せません。')){ state={items:[],history:[],shopping:[],staples:[]}; save(); renderAll(); } };
+$('#wipe').onclick = ()=>{ if(share){ alert('家族と共有中は削除できません。先に「この端末の共有をやめる」を押してください。'); return; } if(confirm('全データを削除します。よろしいですか？')&&confirm('本当に削除しますか？元に戻せません。')){ state={items:[],history:[],shopping:[],staples:[]}; save(); renderAll(); } };
 function loadSample(silent){
   const add=(n,d,q,u)=>{ const p=PRESETS.find(x=>x[0]===n)||[n,'その他',7,'個','冷蔵']; state.items.push({id:uid(),name:n,cat:p[1],loc:p[4],qty:q??1,unit:u??p[3],exp:d===null?null:addDays(d),memo:'',staple:['牛乳','卵'].includes(n),added:todayStr()}); };
   add('牛乳',1); add('卵',6,8); add('豆腐',-1); add('鶏もも肉',0,300,'g'); add('キャベツ',4,0.5,'玉'); add('玉ねぎ',20,3); add('にんじん',9,2); add('じゃがいも',25,4); add('もやし',1); add('長ねぎ',3); add('ごはん(冷凍)',30,3); add('味噌',150); add('ヨーグルト',2); add('食パン',2); add('ウインナー',5);
@@ -759,8 +781,90 @@ window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installP
 if(/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone && location.protocol!=='file:'){ const b=$('#installBanner'); b.style.display='block'; b.textContent='📱 Safari の共有ボタン → 「ホーム画面に追加」で、アプリのように使えて通知も有効になります。'; }
 if('serviceWorker' in navigator && location.protocol!=='file:'){ navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW登録失敗', e)); }
 
+// ---------- 家族と共有 (Supabase) ----------
+const SB_URL = 'https://mpbnjispbvaoeawljsfw.supabase.co';
+const SB_KEY = 'sb_publishable_zm_Qs6ZYv3qH2KA_LPLyxw_9nySZudY';
+const SHARE_KEY = 'fridge-share-v1';
+let share = null; try{ share = JSON.parse(localStorage.getItem(SHARE_KEY)); }catch(e){}
+function saveShare(){ try{ if(share) localStorage.setItem(SHARE_KEY, JSON.stringify(share)); else localStorage.removeItem(SHARE_KEY); }catch(e){} }
+async function rpc(fn, args){
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {method:'POST', headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, body:JSON.stringify(args)});
+  if(!r.ok) throw new Error('通信エラー '+r.status);
+  return r.json();
+}
+function genCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const b=new Uint8Array(12); crypto.getRandomValues(b); const s=[...b].map(x=>A[x%32]).join(''); return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12); }
+function normCode(s){ s=(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); return s.length===12? s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8) : null; }
+function canon(v){ if(Array.isArray(v)) return '['+v.map(canon).join(',')+']'; if(v&&typeof v==='object') return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}'; return JSON.stringify(v); }
+function cloudState(s){ return {items:s.items||[], history:s.history||[], shopping:s.shopping||[], staples:s.staples||[], tombstones:s.tombstones||[]}; }
+// 2つの状態を合成する: 削除記録(tombstones)を尊重し、同じIDは変更時刻が新しい方を採用
+function mergeStates(local, remote){
+  local=cloudState(local); remote=cloudState(remote);
+  const dead=new Map(); [...local.tombstones, ...remote.tombstones].forEach(t=>{ if(!dead.has(t.id)||dead.get(t.id)<t.t) dead.set(t.id,t.t); });
+  const byId=arr=>{ const m=new Map(); arr.forEach(x=>{ if(x&&x.id) m.set(x.id,x); }); return m; };
+  const newer=(a,b)=>((a.mtime||0)>=(b.mtime||0)? a : b);
+  const mergeList=(la,ra,pick)=>{ const l=byId(la), r=byId(ra), out=[]; new Set([...l.keys(),...r.keys()]).forEach(id=>{ if(dead.has(id)) return; const a=l.get(id), b=r.get(id); out.push(a&&b? pick(a,b) : (a||b)); }); return out; };
+  return {
+    items: mergeList(local.items, remote.items, newer),
+    history: mergeList(local.history, remote.history, a=>a).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,300),
+    shopping: mergeList(local.shopping, remote.shopping, newer),
+    staples: [...new Set([...local.staples, ...remote.staples])],
+    tombstones: [...dead].map(([id,t])=>({id,t})).sort((a,b)=>a.t-b.t).slice(-300),
+  };
+}
+function adopt(s){ state = Object.assign({items:[],history:[],shopping:[],staples:[]}, s, {settings: state.settings}); saveLocal(); renderAll(); }
+let pushTimer=null, syncing=false, pendingPush=false;
+function setShareStatus(msg){ const el=$('#shareStatus'); if(el) el.textContent=msg; }
+function schedulePush(){ if(!share) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushNow, 800); }
+async function pushNow(){
+  if(!share) return; if(syncing){ pendingPush=true; return; }
+  syncing=true;
+  try{
+    const res = await rpc('fridge_put', {p_code:share.code, p_state:cloudState(state), p_base:share.updatedAt||null});
+    if(res.conflict){ adopt(mergeStates(state, res.state)); share.updatedAt=res.updated_at; saveShare(); syncing=false; return pushNow(); }
+    share.updatedAt=res.updated_at; share.lastSync=Date.now(); saveShare(); renderShare();
+  }catch(e){ console.warn(e); setShareStatus('同期できませんでした（電波がない？）。次の変更時にもう一度試します。'); }
+  finally{ syncing=false; if(pendingPush){ pendingPush=false; schedulePush(); } }
+}
+async function pullNow(){
+  if(!share || syncing) return;
+  syncing=true;
+  try{
+    const res = await rpc('fridge_get', {p_code:share.code});
+    if(res && res.updated_at!==share.updatedAt){
+      const merged = mergeStates(state, res.state);
+      const differs = canon(cloudState(merged)) !== canon(cloudState(res.state));
+      adopt(merged); share.updatedAt=res.updated_at; saveShare();
+      if(differs) schedulePush();
+    }
+    share.lastSync=Date.now(); saveShare(); renderShare();
+  }catch(e){ console.warn(e); setShareStatus('同期できませんでした（電波がない？）'); }
+  finally{ syncing=false; }
+}
+function renderShare(){
+  const on=!!share; $('#shareOff').style.display=on?'none':'block'; $('#shareOn').style.display=on?'block':'none';
+  if(on){ $('#shareCode').textContent=share.code; const t=share.lastSync? new Date(share.lastSync) : null; setShareStatus(t? `最終同期 ${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}（アプリを開いている間は15秒ごとに自動同期）` : '同期待ち…'); }
+}
+async function joinCode(code){
+  const c=normCode(code); if(!c){ toast('コードの形式が違います（12文字）'); return; }
+  try{
+    const res = await rpc('fridge_get', {p_code:c});
+    if(!res){ toast('そのコードの冷蔵庫は見つかりません'); return; }
+    if(state.items.length && !confirm('この端末にある食材も家族の冷蔵庫に合流させます。よろしいですか？')) return;
+    share={code:c, updatedAt:null}; saveShare();
+    adopt(mergeStates(state, res.state)); share.updatedAt=res.updated_at; saveShare(); renderShare();
+    await pushNow(); toast('家族の冷蔵庫に参加しました');
+  }catch(e){ console.warn(e); toast('接続できませんでした'); }
+}
+$('#shareStart').onclick = async ()=>{ share={code:genCode(), updatedAt:null}; saveShare(); renderShare(); await pushNow(); toast('家族コードを作りました'); };
+$('#shareJoin').onclick = ()=>joinCode($('#shareCodeIn').value);
+$('#shareSync').onclick = async ()=>{ await pullNow(); await pushNow(); toast('同期しました'); };
+$('#shareLeave').onclick = ()=>{ if(confirm('この端末だけ共有をやめます。今あるデータはこの端末に残ります。よろしいですか？')){ share=null; saveShare(); renderShare(); toast('共有をやめました'); } };
+$('#shareCopy').onclick = async ()=>{ const url=`${location.origin}${location.pathname}?join=${share.code}`; const txt=`冷蔵庫管理アプリに参加してください。\n${url}\n家族コード: ${share.code}`; try{ await navigator.clipboard.writeText(txt); toast('招待リンクをコピーしました'); }catch(e){ showAiText(txt); } };
+setInterval(()=>{ if(document.visibilityState==='visible') pullNow(); }, 15000);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') pullNow(); });
+
 // ---------- 全体 ----------
-function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderLog(); renderNotify(); }
+function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderLog(); renderNotify(); renderShare(); }
 load(); fillSelects(); resetForm(); renderAll();
 // マニュアル用スクリーンショット: ?demo=1&tab=add&preset=牛乳 で見本データと画面を指定
 const qs = new URLSearchParams(location.search);
@@ -771,6 +875,12 @@ if(qs.get('demo')==='1'){
   if(qs.get('tab')) showTab(qs.get('tab'));
   if(qs.get('open')) document.querySelectorAll('.help details').forEach((d,i)=>d.open = (i===+qs.get('open')));
 }
+if(qs.get('join')){
+  const c=normCode(qs.get('join'));
+  history.replaceState(null,'',location.pathname);
+  if(c && (!share || share.code!==c)){ showTab('log'); joinCode(c); }
+}
+if(share) pullNow();
 checkAndNotify();
 // 日付が変わったら再描画
 setInterval(renderAll, 60*1000);
