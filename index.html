@@ -793,8 +793,8 @@ if(/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone && location.
 if('serviceWorker' in navigator && location.protocol!=='file:'){ navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW登録失敗', e)); }
 
 // ---------- 家族と共有 (Supabase) ----------
-const SB_URL = 'https://mpbnjispbvaoeawljsfw.supabase.co';
-const SB_KEY = 'sb_publishable_zm_Qs6ZYv3qH2KA_LPLyxw_9nySZudY';
+const SB_URL = 'https://awrfgnqwfbkadbakpfvv.supabase.co';
+const SB_KEY = 'sb_publishable_7jVkl8jEvkpj5_1bfbBCsQ_V18_YeU6';
 const SHARE_KEY = 'fridge-share-v1';
 let share = null; try{ share = JSON.parse(localStorage.getItem(SHARE_KEY)); }catch(e){}
 function saveShare(){ try{ if(share) localStorage.setItem(SHARE_KEY, JSON.stringify(share)); else localStorage.removeItem(SHARE_KEY); }catch(e){} }
