@@ -34,7 +34,19 @@
   .pill.ok{background:var(--ok-bg);color:var(--ok)}
   .pill.none{background:var(--none-bg);color:var(--none)}
   nav{display:flex;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
-  nav button{flex:1;min-width:64px;border:0;background:none;padding:12px 4px;font-size:13px;color:var(--sub);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  .help details{border-bottom:1px solid var(--line);padding:8px 0}
+  .help details:last-child{border-bottom:0}
+  .help summary{cursor:pointer;font-weight:700;font-size:15px;padding:4px 0}
+  .help p,.help li{font-size:14px;line-height:1.6;margin:6px 0}
+  .help ol,.help ul{padding-left:20px;margin:4px 0}
+  .help table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+  .help th,.help td{border:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+  .help th{background:var(--bg)}
+  .help .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
+  .welcome{background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe;border-radius:12px;padding:14px;margin-bottom:12px}
+  .welcome h2{margin:0 0 6px;font-size:16px}
+  .welcome ol{padding-left:20px;margin:6px 0;font-size:14px;line-height:1.7}
+  nav button{flex:1;min-width:56px;border:0;background:none;padding:12px 2px;font-size:13px;color:var(--sub);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
   nav button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
   nav button .badge{display:inline-block;background:var(--expired);color:#fff;border-radius:999px;font-size:10px;padding:1px 6px;margin-left:3px}
   main{max-width:720px;margin:0 auto;padding:12px 12px calc(90px + env(safe-area-inset-bottom))}
@@ -112,6 +124,7 @@
   <button data-tab="recipe">レシピ</button>
   <button data-tab="shop">買い物</button>
   <button data-tab="log">記録・設定</button>
+  <button data-tab="help">使い方</button>
 </nav>
 </div>
 <main>
@@ -244,6 +257,98 @@
     <p class="hint">データはこの端末のブラウザ内にだけ保存されます。機種変更や別端末で使うときは書き出し→読み込みで移せます。</p>
   </div>
 </section>
+
+<!-- 使い方 -->
+<section id="tab-help">
+  <div class="card help">
+    <h2>使い方</h2>
+    <p class="hint">知りたい項目をタップすると開きます。</p>
+    <details open>
+      <summary>はじめに：3ステップで始める</summary>
+      <ol>
+        <li><b>追加</b>タブで、買ってきた食材を登録する（よく買うものはタップだけで期限の目安まで入ります）。</li>
+        <li><b>一覧</b>で期限が近いものを確認し、使ったら「使い切った」、捨てたら「捨てた」を押す。</li>
+        <li><b>レシピ</b>タブで、期限が近い食材を使う料理を見る。</li>
+      </ol>
+      <p>データはこの端末のブラウザ内にだけ保存されます。スマホとパソコンは別々の記録になります。</p>
+    </details>
+    <details>
+      <summary>ホーム画面に追加する（スマホ）</summary>
+      <ul>
+        <li><b>iPhone</b>：Safari の共有ボタン →「ホーム画面に追加」。通知を使うには、追加したアイコンから開く必要があります。</li>
+        <li><b>Android</b>：画面上部に出る案内の「追加する」、または Chrome のメニュー →「ホーム画面に追加」。</li>
+      </ul>
+      <p>追加後はアプリのように全画面で開き、電波がない場所でも動きます。</p>
+    </details>
+    <details>
+      <summary>食材を追加する</summary>
+      <p><b>よく買うものから</b>：分類をタップ → 食材名をタップ → 期限を確認して「冷蔵庫に入れる」。</p>
+      <p><b>手入力</b>：名前・分類・保存場所を入れ、期限はカレンダーか「明日」「1週間」などのボタンで。調味料など期限がないものは「期限なし」。</p>
+      <p><b>常備品</b>にチェックすると、使い切ったときに買い物リストへ自動で入ります（牛乳・卵など）。</p>
+      <p><b>買い物リストから</b>：買ったものにチェック →「チェック済みを冷蔵庫に入れる」で、1つずつ登録フォームが開きます。</p>
+    </details>
+    <details>
+      <summary>一覧の色とボタン</summary>
+      <table>
+        <tr><th>色</th><th>意味</th></tr>
+        <tr><td><span class="dot" style="background:var(--expired)"></span>赤</td><td>期限切れ</td></tr>
+        <tr><td><span class="dot" style="background:var(--urgent)"></span>オレンジ</td><td>あと2日以内</td></tr>
+        <tr><td><span class="dot" style="background:var(--soon)"></span>黄</td><td>あと5日以内</td></tr>
+        <tr><td><span class="dot" style="background:var(--ok)"></span>緑</td><td>余裕あり</td></tr>
+        <tr><td><span class="dot" style="background:var(--none)"></span>グレー</td><td>期限なし</td></tr>
+      </table>
+      <table>
+        <tr><th>ボタン</th><th>起きること</th></tr>
+        <tr><td>−1</td><td>数量が1減る。0になると「使い切った」扱い</td></tr>
+        <tr><td>使い切った</td><td>一覧から消え、使い切りとして記録</td></tr>
+        <tr><td>捨てた</td><td>一覧から消え、廃棄として記録（統計に反映）</td></tr>
+        <tr><td>買い足す</td><td>買い物リストに入る（食材は残る）</td></tr>
+        <tr><td>編集</td><td>期限や数量を直す</td></tr>
+      </table>
+      <p>上のチップで「期限切れ・近い」や保存場所・分類で絞り込めます。</p>
+    </details>
+    <details>
+      <summary>レシピ提案</summary>
+      <p>冷蔵庫の食材で作れる料理を、期限が近い食材を使うものから順に表示します。色付きの食材は冷蔵庫にあるもの、グレーの取り消し線はないものです。</p>
+      <ul>
+        <li><b>期限が近いもの優先</b>：5日以内に期限が来る食材を使う料理だけ。</li>
+        <li><b>作れるもの全部</b>：材料が1つでもある料理をすべて。</li>
+        <li><b>作った</b>：使った食材をまとめて「使い切った」にします。一部だけ使ったときはキャンセルして一覧で −1 を。</li>
+        <li><b>足りないものを買い物リストへ</b>：ない材料を買い物リストに入れます。</li>
+        <li><b>AIに聞く用の文章をコピー</b>：期限が近い食材を入れた質問文をコピーし、ChatGPT や Claude に貼ると別の提案がもらえます。</li>
+      </ul>
+      <p>食材名は部分一致です。「鶏もも肉」も「鶏むね肉」も「鶏肉」のレシピに当たります。商品名ではなく一般的な名前で登録してください。</p>
+    </details>
+    <details>
+      <summary>買い物リストと常備品</summary>
+      <p>自分で入力する、一覧の「買い足す」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを冷蔵庫に入れる」で登録します。</p>
+      <p>常備品を使い切ると自動でリストに入り、「切れている常備品」にも表示されます。常備品をやめるには、一覧の「編集」でチェックを外して保存します。</p>
+    </details>
+    <details>
+      <summary>期限の通知とカレンダー登録</summary>
+      <table>
+        <tr><th>方法</th><th>いつ鳴るか</th></tr>
+        <tr><td>アプリの通知</td><td>アプリを開いたときに1日1回。閉じている間は鳴らない</td></tr>
+        <tr><td>カレンダー登録</td><td>指定した日時にスマホのカレンダーが鳴らす。確実</td></tr>
+      </table>
+      <p><b>アプリの通知</b>：「記録・設定」タブでオンにして、通知を許可します。iPhone はホーム画面に追加したアイコンから開いたときだけ使えます。</p>
+      <p><b>カレンダー登録</b>：「記録・設定」タブで時刻と何日前かを選び、「カレンダー用ファイルを書き出す」。iPhone はファイルを開いて「すべて追加」、Android は Google カレンダーで開くか、パソコンの Google カレンダー「設定 → インポート」で読み込みます。同じ日の食材は1つの予定にまとまります。</p>
+    </details>
+    <details>
+      <summary>記録・バックアップ・困ったとき</summary>
+      <p>「記録・設定」タブに今月の使い切り数・廃棄数・廃棄率と、よく捨てている食材が出ます。</p>
+      <p><b>バックアップ</b>：「書き出し」でファイルを保存し、別端末で「読み込み」を押すと移せます。読み込むと今のデータは置き換わります。</p>
+      <table>
+        <tr><th>症状</th><th>対処</th></tr>
+        <tr><td>通知が出ない</td><td>iPhone はホーム画面のアイコンから開く。「ブロックされています」と出たら端末の設定で通知を許可</td></tr>
+        <tr><td>データが消えた</td><td>ブラウザのサイトデータ削除やプライベートモードが原因。バックアップから読み込み</td></tr>
+        <tr><td>スマホとPCで内容が違う</td><td>端末ごとに保存されるため。書き出し→読み込みで合わせる</td></tr>
+        <tr><td>レシピが出ない</td><td>「作れるもの全部」に切り替える</td></tr>
+        <tr><td>画面が古いまま</td><td>アプリを閉じて開き直す</td></tr>
+      </table>
+    </details>
+  </div>
+</section>
 </main>
 <button class="fab" id="fab" title="追加">＋</button>
 <div id="toast"></div>
@@ -365,7 +470,26 @@ function renderList(){
   else if(LOCS.includes(filter)) items=items.filter(i=>i.loc===filter);
   else if(CATS.includes(filter)) items=items.filter(i=>i.cat===filter);
   if(search) items=items.filter(i=>i.name.includes(search));
-  if(!items.length){ $('#itemList').innerHTML = `<div class="empty">${state.items.length?'該当する食材はありません':'まだ食材がありません。<br>右下の＋から追加するか、「記録」タブでサンプルデータを入れられます。'}</div>`; return; }
+  if(!items.length){
+    if(state.items.length){ $('#itemList').innerHTML = '<div class="empty">該当する食材はありません</div>'; return; }
+    $('#itemList').innerHTML = `<div class="welcome">
+      <h2>🧊 ようこそ！冷蔵庫管理の始め方</h2>
+      <ol>
+        <li><b>追加</b>タブ（右下の＋）で、今ある食材を登録する。よく買うものはタップだけで期限の目安まで入ります。</li>
+        <li><b>一覧</b>で期限が近いものを確認。使ったら「使い切った」、捨てたら「捨てた」。</li>
+        <li><b>レシピ</b>タブで、期限が近い食材を使う料理を見る。</li>
+      </ol>
+      <div class="row" style="margin-top:8px">
+        <button class="sm primary" id="welcomeAdd">食材を追加する</button>
+        <button class="sm" id="welcomeHelp">使い方を見る</button>
+        <button class="sm" id="welcomeSample">サンプルで試す</button>
+      </div>
+    </div>`;
+    $('#welcomeAdd').onclick=()=>{ resetForm(); showTab('add'); $('#f-name').focus(); };
+    $('#welcomeHelp').onclick=()=>showTab('help');
+    $('#welcomeSample').onclick=()=>$('#sample').click();
+    return;
+  }
   $('#itemList').innerHTML = items.map(i=>{
     const st=statusOf(i);
     return `<div class="card item ${st}" data-id="${i.id}">
@@ -383,8 +507,8 @@ function renderList(){
   }).join('');
 }
 $('#itemList').onclick = e=>{
-  const b=e.target.closest('button'); if(!b) return;
-  const id=e.target.closest('.item').dataset.id; const item=state.items.find(i=>i.id===id); if(!item) return;
+  const b=e.target.closest('button'); const card=e.target.closest('.item'); if(!b||!card) return;
+  const id=card.dataset.id; const item=state.items.find(i=>i.id===id); if(!item) return;
   const act=b.dataset.act;
   if(act==='dec'){ item.qty=Math.max(0, +(item.qty-1).toFixed(2)); if(item.qty<=0){ finish(item,'used'); toast(`${item.name} を使い切りました`); } else { save(); renderAll(); } }
   else if(act==='used'){ finish(item,'used'); toast(`${item.name} を使い切りました`); }
