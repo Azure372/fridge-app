@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="冷蔵庫">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>冷蔵庫管理</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#fff; --text:#1f2937; --sub:#6b7280; --line:#e5e7eb;
+    --accent:#2563eb; --accent-bg:#dbeafe;
+    --ok:#16a34a; --ok-bg:#dcfce7;
+    --soon:#d97706; --soon-bg:#fef3c7;
+    --urgent:#ea580c; --urgent-bg:#ffedd5;
+    --expired:#dc2626; --expired-bg:#fee2e2;
+    --none:#6b7280; --none-bg:#f3f4f6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+  .top{position:sticky;top:0;z-index:5;padding-top:env(safe-area-inset-top)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:12px 16px}
+  header h1{margin:0;font-size:18px;display:flex;align-items:center;gap:8px}
+  .summary{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .pill{font-size:12px;padding:3px 10px;border-radius:999px;font-weight:600}
+  .pill.expired{background:var(--expired-bg);color:var(--expired)}
+  .pill.urgent{background:var(--urgent-bg);color:var(--urgent)}
+  .pill.soon{background:var(--soon-bg);color:var(--soon)}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)}
+  .pill.none{background:var(--none-bg);color:var(--none)}
+  nav{display:flex;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+  nav button{flex:1;min-width:64px;border:0;background:none;padding:12px 4px;font-size:13px;color:var(--sub);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+  nav button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+  nav button .badge{display:inline-block;background:var(--expired);color:#fff;border-radius:999px;font-size:10px;padding:1px 6px;margin-left:3px}
+  main{max-width:720px;margin:0 auto;padding:12px 12px calc(90px + env(safe-area-inset-bottom))}
+  .fab{bottom:calc(18px + env(safe-area-inset-bottom)) !important}
+  .switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;font-size:14px}
+  .switch input[type=checkbox]{width:22px;height:22px}
+  #installBanner{display:none;background:var(--accent-bg);color:#1e3a8a;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px}
+  section{display:none}
+  section.active{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+  .card h2{font-size:15px;margin:0 0 8px}
+  .item{display:flex;gap:10px;align-items:flex-start;border-left:5px solid var(--none)}
+  .item.expired{border-left-color:var(--expired)}
+  .item.urgent{border-left-color:var(--urgent)}
+  .item.soon{border-left-color:var(--soon)}
+  .item.ok{border-left-color:var(--ok)}
+  .item .body{flex:1;min-width:0}
+  .item .name{font-weight:700;font-size:16px}
+  .item .meta{font-size:12px;color:var(--sub);margin-top:2px}
+  .item .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  button.sm{font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--text)}
+  button.sm.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.sm.danger{color:var(--expired);border-color:#fecaca}
+  button.sm:active{transform:scale(.97)}
+  .btn{width:100%;padding:12px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+  .btn.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  label{display:block;font-size:12px;color:var(--sub);margin:8px 0 3px}
+  input,select,textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:#fff;color:var(--text)}
+  input[type=checkbox]{width:auto}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .chip.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+  .chip.tag{cursor:default}
+  .chip.tag.expired{background:var(--expired-bg);color:var(--expired);border-color:transparent}
+  .chip.tag.urgent{background:var(--urgent-bg);color:var(--urgent);border-color:transparent}
+  .chip.tag.soon{background:var(--soon-bg);color:var(--soon);border-color:transparent}
+  .chip.tag.ok{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+  .chip.tag.missing{background:var(--none-bg);color:var(--sub);border-color:transparent;text-decoration:line-through}
+  .empty{text-align:center;color:var(--sub);padding:30px 10px;font-size:14px}
+  .filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .recipe .title{display:flex;justify-content:space-between;align-items:center}
+  .recipe .title b{font-size:16px}
+  .recipe .sub{font-size:12px;color:var(--sub);margin:4px 0}
+  .recipe details{margin-top:8px;font-size:13px}
+  .recipe summary{cursor:pointer;color:var(--accent)}
+  .recipe ol{padding-left:18px;margin:6px 0}
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+  .stat div{background:var(--bg);border-radius:10px;padding:10px}
+  .stat b{display:block;font-size:22px}
+  .stat span{font-size:11px;color:var(--sub)}
+  .hist{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .hist:last-child{border-bottom:0}
+  .shop{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .shop:last-child{border-bottom:0}
+  .shop input[type=checkbox]{width:20px;height:20px}
+  .shop .n{flex:1}
+  .shop.done .n{text-decoration:line-through;color:var(--sub)}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:20}
+  #toast.show{opacity:1}
+  .hint{font-size:12px;color:var(--sub);margin:4px 0}
+  .fab{position:fixed;right:18px;bottom:18px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:0;font-size:30px;box-shadow:0 4px 12px rgba(0,0,0,.25);cursor:pointer;z-index:6}
+</style>
+</head>
+<body>
+<div class="top">
+<header>
+  <h1>🧊 冷蔵庫管理</h1>
+  <div class="summary" id="summary"></div>
+</header>
+<nav id="nav">
+  <button data-tab="list" class="active">一覧</button>
+  <button data-tab="add">追加</button>
+  <button data-tab="recipe">レシピ</button>
+  <button data-tab="shop">買い物</button>
+  <button data-tab="log">記録・設定</button>
+</nav>
+</div>
+<main>
+<div id="installBanner"></div>
+
+<!-- 一覧 -->
+<section id="tab-list" class="active">
+  <input type="search" id="search" placeholder="食材名で検索" style="margin-bottom:8px">
+  <div class="filters" id="filters"></div>
+  <div id="itemList"></div>
+</section>
+
+<!-- 追加 -->
+<section id="tab-add">
+  <div class="card">
+    <h2>よく買うものから追加（タップで入力欄に反映）</h2>
+    <div class="chips" id="presetCats"></div>
+    <div class="chips" id="presets" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2 id="formTitle">食材を追加</h2>
+    <form id="form">
+      <input type="hidden" id="f-id">
+      <label>名前</label>
+      <input id="f-name" required placeholder="例：牛乳" list="nameList">
+      <datalist id="nameList"></datalist>
+      <div class="row">
+        <div><label>分類</label><select id="f-cat"></select></div>
+        <div><label>保存場所</label><select id="f-loc"></select></div>
+      </div>
+      <div class="row">
+        <div><label>数量</label><input id="f-qty" type="number" min="0" step="0.5" value="1"></div>
+        <div><label>単位</label><input id="f-unit" value="個" list="unitList"><datalist id="unitList"><option>個<option>本<option>パック<option>袋<option>g<option>ml<option>枚<option>玉<option>切れ</datalist></div>
+      </div>
+      <label>賞味・消費期限 <span class="hint" style="display:inline" id="expHint"></span></label>
+      <input id="f-exp" type="date">
+      <div class="chips" style="margin-top:6px">
+        <span class="chip" data-days="1">明日</span><span class="chip" data-days="3">3日後</span><span class="chip" data-days="7">1週間</span><span class="chip" data-days="14">2週間</span><span class="chip" data-days="30">1か月</span><span class="chip" data-days="">期限なし</span>
+      </div>
+      <label>メモ</label>
+      <input id="f-memo" placeholder="開封済み、半分使用済み など">
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:var(--text)">
+        <input type="checkbox" id="f-staple"> 常備品（なくなったら買い物リストに自動追加）
+      </label>
+      <div style="margin-top:14px" class="row">
+        <button type="submit" class="btn" id="submitBtn">冷蔵庫に入れる</button>
+        <button type="button" class="btn secondary" id="cancelEdit" style="display:none">キャンセル</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- レシピ -->
+<section id="tab-recipe">
+  <div class="card">
+    <h2>期限が近い食材を使うレシピ</h2>
+    <div class="hint">冷蔵庫にある食材と照らし合わせて、期限が近いものを優先しておすすめします。</div>
+    <div class="filters" style="margin-top:8px">
+      <span class="chip on" data-rmode="urgent">期限が近いもの優先</span>
+      <span class="chip" data-rmode="all">作れるもの全部</span>
+    </div>
+    <button class="btn secondary" id="aiPrompt" style="margin-top:4px">AIに聞く用の文章をコピー（期限が近い食材入り）</button>
+  </div>
+  <div id="recipeList"></div>
+</section>
+
+<!-- 買い物 -->
+<section id="tab-shop">
+  <div class="card">
+    <h2>買い物リスト</h2>
+    <form id="shopForm" class="row">
+      <input id="shopName" placeholder="買うもの" required>
+      <button class="btn" style="flex:0 0 80px">追加</button>
+    </form>
+    <div id="shopList" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn secondary" id="shopToFridge">チェック済みを冷蔵庫に入れる</button>
+      <button class="btn secondary" id="shopClear">チェック済みを消す</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>切れている常備品</h2>
+    <div class="hint">常備品に設定したもので、今冷蔵庫にないものです。</div>
+    <div id="stapleList"></div>
+  </div>
+</section>
+
+<!-- 記録 -->
+<section id="tab-log">
+  <div class="card">
+    <h2>期限のお知らせ</h2>
+    <label class="switch"><span>アプリを開いたときに期限が近い食材を通知する</span><input type="checkbox" id="n-on"></label>
+    <div class="row">
+      <div><label>何日前から知らせる</label><select id="n-days"><option value="1">1日前</option><option value="2" selected>2日前</option><option value="3">3日前</option><option value="5">5日前</option></select></div>
+      <div><label>&nbsp;</label><button class="btn secondary" id="n-test" type="button">通知をテスト</button></div>
+    </div>
+    <div class="hint" id="n-status" style="margin-top:8px"></div>
+    <p class="hint">この通知はアプリを開いた（またはホーム画面のアイコンから起動した）ときに1日1回出ます。閉じている間にも確実に知らせたい場合は、下の「カレンダーに登録」を使ってください。</p>
+  </div>
+  <div class="card">
+    <h2>カレンダーに期限を登録</h2>
+    <p class="hint">期限のある食材を予定ファイル(.ics)にして、iPhone・Android のカレンダーに取り込めます。前日に通知が鳴るよう設定済みなので、アプリを開かなくてもリマインドされます。</p>
+    <div class="row">
+      <div><label>通知する時刻</label><input type="time" id="c-time" value="09:00"></div>
+      <div><label>何日前</label><select id="c-days"><option value="0">当日</option><option value="1" selected>1日前</option><option value="2">2日前</option></select></div>
+    </div>
+    <button class="btn secondary" id="c-export" style="margin-top:10px">カレンダー用ファイルを書き出す</button>
+    <p class="hint">iPhone: ファイルを開くと「カレンダーに追加」が出ます。Android: Google カレンダーアプリに読み込むか、Google カレンダーのウェブ版「設定 → インポート」で読み込みます。</p>
+  </div>
+  <div class="card">
+    <h2>今月の使い切り・廃棄</h2>
+    <div class="stat" id="stats"></div>
+    <div id="wasteTop" class="hint" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>履歴</h2>
+    <div id="history"></div>
+  </div>
+  <div class="card">
+    <h2>データ</h2>
+    <div class="row">
+      <button class="btn secondary" id="export">書き出し（バックアップ）</button>
+      <button class="btn secondary" id="importBtn">読み込み</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn secondary" id="sample">サンプルデータを入れる</button>
+      <button class="btn secondary" id="wipe" style="color:var(--expired);border-color:#fecaca">全データ削除</button>
+    </div>
+    <p class="hint">データはこの端末のブラウザ内にだけ保存されます。機種変更や別端末で使うときは書き出し→読み込みで移せます。</p>
+  </div>
+</section>
+</main>
+<button class="fab" id="fab" title="追加">＋</button>
+<div id="toast"></div>
+
+<script>
+// ---------- 定数 ----------
+const CATS = ['野菜','肉','魚','乳製品・卵','大豆・加工品','主食・パン','調味料','飲み物','その他'];
+const LOCS = ['冷蔵','冷凍','野菜室','常温'];
+// よく買うもの: [名前, 分類, 目安日数, 単位, 保存場所]
+const PRESETS = [
+  ['牛乳','乳製品・卵',7,'本','冷蔵'],['卵','乳製品・卵',14,'個','冷蔵'],['ヨーグルト','乳製品・卵',10,'個','冷蔵'],['チーズ','乳製品・卵',20,'袋','冷蔵'],['バター','乳製品・卵',60,'個','冷蔵'],
+  ['豆腐','大豆・加工品',5,'丁','冷蔵'],['納豆','大豆・加工品',7,'パック','冷蔵'],['ウインナー','大豆・加工品',10,'袋','冷蔵'],['ベーコン','大豆・加工品',10,'パック','冷蔵'],['ハム','大豆・加工品',7,'パック','冷蔵'],['油揚げ','大豆・加工品',5,'枚','冷蔵'],
+  ['鶏もも肉','肉',2,'g','冷蔵'],['鶏むね肉','肉',2,'g','冷蔵'],['豚こま肉','肉',2,'g','冷蔵'],['豚バラ肉','肉',2,'g','冷蔵'],['牛こま肉','肉',2,'g','冷蔵'],['ひき肉','肉',1,'g','冷蔵'],
+  ['鮭','魚',2,'切れ','冷蔵'],['さば','魚',2,'切れ','冷蔵'],['しらす','魚',4,'パック','冷蔵'],
+  ['キャベツ','野菜',10,'玉','野菜室'],['玉ねぎ','野菜',30,'個','常温'],['にんじん','野菜',14,'本','野菜室'],['じゃがいも','野菜',30,'個','常温'],['もやし','野菜',2,'袋','冷蔵'],['トマト','野菜',7,'個','野菜室'],['きゅうり','野菜',5,'本','野菜室'],['ほうれん草','野菜',3,'袋','野菜室'],['長ねぎ','野菜',7,'本','野菜室'],['ピーマン','野菜',7,'袋','野菜室'],['大根','野菜',10,'本','野菜室'],['レタス','野菜',5,'玉','野菜室'],['白菜','野菜',14,'個','野菜室'],['なす','野菜',5,'本','野菜室'],['きのこ','野菜',5,'パック','野菜室'],['バナナ','野菜',4,'本','常温'],
+  ['食パン','主食・パン',4,'袋','常温'],['うどん','主食・パン',5,'玉','冷蔵'],['焼きそば麺','主食・パン',5,'玉','冷蔵'],['ごはん(冷凍)','主食・パン',30,'個','冷凍'],['パスタ','主食・パン',365,'袋','常温'],
+  ['味噌','調味料',180,'個','冷蔵'],['マヨネーズ','調味料',30,'本','冷蔵'],['ケチャップ','調味料',30,'本','冷蔵'],['めんつゆ','調味料',30,'本','冷蔵'],['ポン酢','調味料',60,'本','冷蔵'],
+  ['麦茶','飲み物',3,'本','冷蔵'],['ジュース','飲み物',7,'本','冷蔵'],
+];
+// レシピ: 材料は [表示名, 一致キーワード配列]
+const RECIPES = [
+  {n:'肉じゃが',t:30,i:[['豚肉または牛肉',['豚','牛肉','牛こま','牛切り落とし','牛バラ','牛薄切り']],['じゃがいも',['じゃがいも','ジャガイモ']],['玉ねぎ',['玉ねぎ','たまねぎ']],['にんじん',['にんじん','人参']]],s:'しょうゆ・みりん・砂糖・だし',p:['具材を一口大に切る','鍋で肉と野菜を炒める','水とだし・調味料を入れて落し蓋で15分煮る']},
+  {n:'野菜炒め',t:15,i:[['キャベツ',['キャベツ']],['もやし',['もやし']],['豚肉',['豚']],['にんじん',['にんじん','人参']],['ピーマン',['ピーマン']]],s:'塩こしょう・しょうゆ・ごま油',p:['肉を炒めて取り出す','固い野菜から順に強火で炒める','肉を戻して調味する']},
+  {n:'親子丼',t:15,i:[['鶏肉',['鶏','チキン']],['卵',['卵','たまご']],['玉ねぎ',['玉ねぎ','たまねぎ']],['ごはん',['ごはん','ご飯','米']]],s:'めんつゆ・砂糖',p:['玉ねぎと鶏肉をめんつゆで煮る','溶き卵を回し入れて半熟で火を止める','ごはんにのせる']},
+  {n:'オムライス',t:20,i:[['卵',['卵','たまご']],['ごはん',['ごはん','ご飯','米']],['玉ねぎ',['玉ねぎ','たまねぎ']],['ウインナーまたは鶏肉',['ウインナー','ソーセージ','鶏','ハム','ベーコン']]],s:'ケチャップ・塩こしょう・バター',p:['具を炒めてごはんとケチャップで炒める','薄焼き卵を作ってケチャップライスを包む']},
+  {n:'鶏の照り焼き',t:15,i:[['鶏もも肉',['鶏','チキン']]],s:'しょうゆ・みりん・酒・砂糖',p:['皮目から焼いて両面焼く','調味料を加えて煮からめる']},
+  {n:'豚の生姜焼き',t:15,i:[['豚肉',['豚']],['玉ねぎ',['玉ねぎ','たまねぎ']],['キャベツ',['キャベツ']]],s:'しょうゆ・みりん・酒・しょうが',p:['豚肉と玉ねぎを焼く','調味料を加えてからめる','千切りキャベツを添える']},
+  {n:'麻婆豆腐',t:20,i:[['豆腐',['豆腐']],['ひき肉',['ひき肉','挽肉','ミンチ']],['長ねぎ',['ねぎ','ネギ']]],s:'豆板醤・味噌・しょうゆ・鶏ガラ・片栗粉',p:['ひき肉を炒めて調味料を加える','水と豆腐を入れて煮る','水溶き片栗粉でとろみをつけ、ねぎを散らす']},
+  {n:'具だくさん味噌汁',t:15,i:[['豆腐',['豆腐']],['長ねぎ',['ねぎ','ネギ']],['大根',['大根']],['キャベツや玉ねぎ',['キャベツ','玉ねぎ','白菜','きのこ','じゃがいも']],['油揚げ',['油揚げ']]],s:'だし・味噌',p:['だしで固い野菜から煮る','豆腐を入れて火を止める直前に味噌を溶く']},
+  {n:'カレーライス',t:40,i:[['肉',['豚','牛肉','牛こま','牛切り落とし','牛バラ','鶏','ひき肉']],['玉ねぎ',['玉ねぎ','たまねぎ']],['にんじん',['にんじん','人参']],['じゃがいも',['じゃがいも','ジャガイモ']],['ごはん',['ごはん','ご飯','米']]],s:'カレールウ',p:['肉と野菜を炒める','水を入れて20分煮る','火を止めてルウを溶かし、とろみが出るまで煮る']},
+  {n:'ハンバーグ',t:30,i:[['ひき肉',['ひき肉','挽肉','ミンチ']],['玉ねぎ',['玉ねぎ','たまねぎ']],['卵',['卵','たまご']],['食パン(パン粉代わり)',['食パン','パン粉']]],s:'塩こしょう・ナツメグ・ケチャップ・ソース',p:['玉ねぎをみじん切りにして炒める','材料をこねて成形する','両面を焼いて蓋をして蒸し焼きにする']},
+  {n:'鮭のムニエル',t:15,i:[['鮭',['鮭','サーモン']],['バター',['バター']]],s:'塩こしょう・小麦粉・レモン',p:['鮭に塩こしょうと小麦粉をまぶす','バターで両面をこんがり焼く']},
+  {n:'さばの味噌煮',t:20,i:[['さば',['さば','サバ','鯖']],['長ねぎ',['ねぎ','ネギ']]],s:'味噌・砂糖・みりん・しょうが',p:['調味料と水を煮立てる','さばを入れて落し蓋で10分煮る']},
+  {n:'だし巻き卵',t:10,i:[['卵',['卵','たまご']]],s:'だし・砂糖・しょうゆ',p:['卵を溶いて調味料を混ぜる','卵焼き器で巻きながら焼く']},
+  {n:'チャーハン',t:15,i:[['ごはん',['ごはん','ご飯','米']],['卵',['卵','たまご']],['長ねぎ',['ねぎ','ネギ']],['ハムやウインナー',['ハム','ウインナー','ベーコン','チャーシュー','豚']]],s:'塩こしょう・しょうゆ・鶏ガラ',p:['卵を先に炒めて取り出す','具とごはんを炒め、卵を戻して調味する']},
+  {n:'納豆チャーハン',t:10,i:[['納豆',['納豆']],['ごはん',['ごはん','ご飯','米']],['卵',['卵','たまご']],['長ねぎ',['ねぎ','ネギ']]],s:'しょうゆ・納豆のたれ',p:['卵とごはんを炒める','納豆とねぎを加えてたれとしょうゆで調味する']},
+  {n:'野菜たっぷりスープ',t:20,i:[['キャベツ',['キャベツ','白菜']],['玉ねぎ',['玉ねぎ','たまねぎ']],['にんじん',['にんじん','人参']],['ベーコンかウインナー',['ベーコン','ウインナー','ハム']]],s:'コンソメ・塩こしょう',p:['野菜を角切りにする','全部鍋に入れてコンソメで15分煮る']},
+  {n:'ポテトサラダ',t:25,i:[['じゃがいも',['じゃがいも','ジャガイモ']],['きゅうり',['きゅうり','キュウリ']],['にんじん',['にんじん','人参']],['ハム',['ハム']],['卵',['卵','たまご']]],s:'マヨネーズ・塩こしょう・酢',p:['じゃがいもを茹でてつぶす','具を混ぜてマヨネーズで和える']},
+  {n:'ほうれん草のおひたし',t:10,i:[['ほうれん草',['ほうれん草','ホウレンソウ','小松菜']]],s:'しょうゆ・だし・かつお節',p:['さっと茹でて水にさらす','絞って切り、調味料をかける']},
+  {n:'もやしナムル',t:10,i:[['もやし',['もやし']]],s:'ごま油・塩・にんにく・ごま',p:['もやしを1分茹でる','水気を切って調味料と和える']},
+  {n:'きゅうりの浅漬け',t:5,i:[['きゅうり',['きゅうり','キュウリ']]],s:'塩・昆布・ごま油',p:['乱切りにして袋に入れる','塩と昆布を入れてもんで10分置く']},
+  {n:'トマトとチーズのサラダ',t:5,i:[['トマト',['トマト']],['チーズ',['チーズ','モッツァレラ']]],s:'オリーブオイル・塩・こしょう',p:['トマトとチーズを交互に並べる','オリーブオイルと塩をかける']},
+  {n:'回鍋肉',t:15,i:[['キャベツ',['キャベツ']],['豚肉',['豚']],['ピーマン',['ピーマン']]],s:'甜麺醤・豆板醤・しょうゆ・酒',p:['豚肉を炒めて取り出す','野菜を炒め、肉を戻して調味料をからめる']},
+  {n:'ソース焼きそば',t:15,i:[['焼きそば麺',['焼きそば']],['キャベツ',['キャベツ']],['豚肉',['豚']],['もやし',['もやし']]],s:'ソース・青のり',p:['肉と野菜を炒める','麺をほぐして加え、ソースで味付け']},
+  {n:'肉うどん',t:15,i:[['うどん',['うどん']],['豚肉または牛肉',['豚','牛肉','牛こま','牛切り落とし','牛バラ','牛薄切り']],['長ねぎ',['ねぎ','ネギ']]],s:'めんつゆ・砂糖',p:['肉を甘辛く煮る','茹でたうどんにつゆと肉をのせる']},
+  {n:'ナポリタン',t:20,i:[['パスタ',['パスタ','スパゲッティ']],['玉ねぎ',['玉ねぎ','たまねぎ']],['ピーマン',['ピーマン']],['ウインナー',['ウインナー','ソーセージ','ベーコン','ハム']]],s:'ケチャップ・バター・塩こしょう',p:['パスタを茹でる','具を炒めてケチャップを加え、パスタとからめる']},
+  {n:'フレンチトースト',t:15,i:[['食パン',['食パン','パン']],['卵',['卵','たまご']],['牛乳',['牛乳','ミルク']]],s:'砂糖・バター',p:['卵・牛乳・砂糖を混ぜてパンを浸す','バターで両面をじっくり焼く']},
+  {n:'ピザトースト',t:10,i:[['食パン',['食パン','パン']],['チーズ',['チーズ']],['ピーマン',['ピーマン','玉ねぎ','トマト']],['ウインナー',['ウインナー','ハム','ベーコン']]],s:'ケチャップ',p:['パンにケチャップを塗って具とチーズをのせる','トースターで焼く']},
+  {n:'豆腐ハンバーグ',t:25,i:[['豆腐',['豆腐']],['ひき肉',['ひき肉','挽肉','ミンチ']],['玉ねぎ',['玉ねぎ','たまねぎ']]],s:'塩こしょう・ポン酢・大根おろし',p:['水切りした豆腐とひき肉をこねる','成形して焼き、ポン酢でいただく']},
+  {n:'鶏と大根の煮物',t:30,i:[['鶏肉',['鶏','チキン']],['大根',['大根']]],s:'しょうゆ・みりん・酒・砂糖・だし',p:['鶏肉を焼き色がつくまで焼く','大根と調味料を加えて20分煮る']},
+  {n:'グラタン',t:35,i:[['牛乳',['牛乳','ミルク']],['チーズ',['チーズ']],['鶏肉',['鶏','チキン','ベーコン','ウインナー']],['玉ねぎ',['玉ねぎ','たまねぎ']],['パスタまたはじゃがいも',['パスタ','マカロニ','じゃがいも']]],s:'バター・小麦粉・コンソメ',p:['具を炒めて小麦粉をふり、牛乳でホワイトソースにする','チーズをのせてオーブンで焼く']},
+  {n:'サラダチキン',t:30,i:[['鶏むね肉',['鶏むね','鶏']]],s:'塩・砂糖・酒',p:['塩と砂糖をもみこむ','袋に入れて沸騰した湯に入れ火を止めて30分置く']},
+  {n:'バナナヨーグルトスムージー',t:5,i:[['ヨーグルト',['ヨーグルト']],['バナナ',['バナナ']],['牛乳',['牛乳','ミルク']]],s:'はちみつ',p:['全部ミキサーにかける']},
+  {n:'豚汁',t:25,i:[['豚肉',['豚']],['大根',['大根']],['にんじん',['にんじん','人参']],['豆腐',['豆腐']],['長ねぎ',['ねぎ','ネギ']]],s:'だし・味噌・ごま油',p:['豚肉と根菜をごま油で炒める','だしで煮て、豆腐を加え味噌を溶く']},
+  {n:'白菜と豚バラのミルフィーユ鍋',t:25,i:[['白菜',['白菜','キャベツ']],['豚バラ肉',['豚']]],s:'だし・ポン酢',p:['白菜と豚肉を交互に重ねて切る','鍋に詰めてだしで煮る']},
+  {n:'きのこの炊き込みごはん',t:50,i:[['きのこ',['きのこ','しめじ','えのき','まいたけ','エリンギ','しいたけ']],['米',['米','ごはん']],['油揚げ',['油揚げ']]],s:'しょうゆ・酒・みりん',p:['米を研ぎ、調味料と水を入れる','きのこと油揚げをのせて炊く']},
+  {n:'しらす丼',t:5,i:[['しらす',['しらす']],['ごはん',['ごはん','ご飯','米']],['卵',['卵','たまご']]],s:'しょうゆ・大葉・ごま',p:['ごはんにしらすをのせる','卵黄をのせてしょうゆをかける']},
+  {n:'なすの煮びたし',t:15,i:[['なす',['なす','ナス','茄子']]],s:'めんつゆ・しょうが・ごま油',p:['なすを切って油で焼く','めんつゆで煮含めて冷やす']},
+  {n:'レタスとベーコンのサラダ',t:5,i:[['レタス',['レタス']],['ベーコン',['ベーコン']],['トマト',['トマト']]],s:'ドレッシング',p:['ベーコンをカリカリに焼く','ちぎったレタスにのせる']},
+];
+
+// ---------- 状態 ----------
+const KEY = 'fridge-app-v1';
+let state = {items:[], history:[], shopping:[], staples:[]};
+function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) state = Object.assign(state, s); }catch(e){} }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('保存できない環境です（この表示中だけデータが残ります）'); } }
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---------- 日付 ----------
+function todayStr(d=new Date()){ const z=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; }
+function addDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return todayStr(d); }
+function daysLeft(exp){ if(!exp) return null; const a=new Date(todayStr()), b=new Date(exp); return Math.round((b-a)/86400000); }
+function statusOf(item){ const d=daysLeft(item.exp); if(d===null) return 'none'; if(d<0) return 'expired'; if(d<=2) return 'urgent'; if(d<=5) return 'soon'; return 'ok'; }
+function expLabel(item){ const d=daysLeft(item.exp); if(d===null) return '期限なし'; if(d<0) return `期限切れ ${-d}日`; if(d===0) return '今日まで'; if(d===1) return '明日まで'; return `あと${d}日`; }
+const STATUS_NAME = {expired:'期限切れ',urgent:'2日以内',soon:'5日以内',ok:'余裕あり',none:'期限なし'};
+
+// ---------- トースト ----------
+let toastTimer;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1800); }
+
+// ---------- タブ ----------
+function showTab(name){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active', s.id==='tab-'+name));
+  window.scrollTo(0,0);
+  renderAll();
+}
+$('#nav').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) showTab(b.dataset.tab); });
+$('#fab').onclick = ()=>{ resetForm(); showTab('add'); $('#f-name').focus(); };
+
+// ---------- 一覧 ----------
+let filter = 'all', search = '';
+$('#search').oninput = e=>{ search=e.target.value.trim(); renderList(); };
+function renderSummary(){
+  const c = {expired:0,urgent:0,soon:0,ok:0,none:0};
+  state.items.forEach(i=>c[statusOf(i)]++);
+  $('#summary').innerHTML = `<span class="pill none">全${state.items.length}品</span>` +
+    ['expired','urgent','soon'].filter(k=>c[k]).map(k=>`<span class="pill ${k}">${STATUS_NAME[k]} ${c[k]}</span>`).join('');
+  const alert = c.expired + c.urgent;
+  const nb = document.querySelector('nav button[data-tab="list"]');
+  nb.innerHTML = '一覧' + (alert? `<span class="badge">${alert}</span>`:'');
+}
+function renderFilters(){
+  const fs = [['all','すべて'],['alert','期限切れ・近い'],...LOCS.map(l=>[l,l]),...CATS.map(c=>[c,c])];
+  $('#filters').innerHTML = fs.map(([k,v])=>`<span class="chip ${filter===k?'on':''}" data-f="${k}">${v}</span>`).join('');
+}
+$('#filters').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; filter=c.dataset.f; renderList(); };
+function renderList(){
+  renderFilters();
+  const order = {expired:0,urgent:1,soon:2,ok:3,none:4};
+  let items = state.items.slice().sort((a,b)=>{
+    const sa=statusOf(a), sb=statusOf(b);
+    if(sa!==sb) return order[sa]-order[sb];
+    return (a.exp||'9999')<(b.exp||'9999')?-1:1;
+  });
+  if(filter==='alert') items=items.filter(i=>['expired','urgent'].includes(statusOf(i)));
+  else if(LOCS.includes(filter)) items=items.filter(i=>i.loc===filter);
+  else if(CATS.includes(filter)) items=items.filter(i=>i.cat===filter);
+  if(search) items=items.filter(i=>i.name.includes(search));
+  if(!items.length){ $('#itemList').innerHTML = `<div class="empty">${state.items.length?'該当する食材はありません':'まだ食材がありません。<br>右下の＋から追加するか、「記録」タブでサンプルデータを入れられます。'}</div>`; return; }
+  $('#itemList').innerHTML = items.map(i=>{
+    const st=statusOf(i);
+    return `<div class="card item ${st}" data-id="${i.id}">
+      <div class="body">
+        <div class="name">${esc(i.name)} <span style="font-weight:400;font-size:13px;color:var(--sub)">${i.qty}${esc(i.unit)}</span>${i.staple?' <span class="chip tag" style="font-size:10px;padding:1px 6px">常備</span>':''}</div>
+        <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ ${esc(i.loc)} ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
+        <div class="actions">
+          <button class="sm" data-act="dec">−1</button>
+          <button class="sm primary" data-act="used">使い切った</button>
+          <button class="sm danger" data-act="waste">捨てた</button>
+          <button class="sm" data-act="shop">買い足す</button>
+          <button class="sm" data-act="edit">編集</button>
+        </div>
+      </div></div>`;
+  }).join('');
+}
+$('#itemList').onclick = e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const id=e.target.closest('.item').dataset.id; const item=state.items.find(i=>i.id===id); if(!item) return;
+  const act=b.dataset.act;
+  if(act==='dec'){ item.qty=Math.max(0, +(item.qty-1).toFixed(2)); if(item.qty<=0){ finish(item,'used'); toast(`${item.name} を使い切りました`); } else { save(); renderAll(); } }
+  else if(act==='used'){ finish(item,'used'); toast(`${item.name} を使い切りました`); }
+  else if(act==='waste'){ if(confirm(`${item.name} を廃棄として記録しますか？`)){ finish(item,'waste'); toast(`${item.name} を廃棄として記録`); } }
+  else if(act==='shop'){ addShop(item.name); toast(`買い物リストに ${item.name} を追加`); }
+  else if(act==='edit'){ editItem(item); }
+};
+function finish(item, type){
+  state.items = state.items.filter(i=>i.id!==item.id);
+  state.history.unshift({id:uid(), name:item.name, cat:item.cat, type, date:todayStr(), exp:item.exp||null});
+  state.history = state.history.slice(0,300);
+  if(item.staple){ if(!state.staples.includes(item.name)) state.staples.push(item.name); addShop(item.name, true); }
+  save(); renderAll();
+}
+
+// ---------- 追加・編集 ----------
+function fillSelects(){
+  $('#f-cat').innerHTML = CATS.map(c=>`<option>${c}</option>`).join('');
+  $('#f-loc').innerHTML = LOCS.map(c=>`<option>${c}</option>`).join('');
+  $('#nameList').innerHTML = PRESETS.map(p=>`<option value="${p[0]}">`).join('');
+}
+let presetCat = CATS[0];
+function renderPresets(){
+  $('#presetCats').innerHTML = CATS.filter(c=>PRESETS.some(p=>p[1]===c)).map(c=>`<span class="chip ${c===presetCat?'on':''}" data-c="${c}">${c}</span>`).join('');
+  $('#presets').innerHTML = PRESETS.filter(p=>p[1]===presetCat).map(p=>`<span class="chip" data-p="${p[0]}">${p[0]}</span>`).join('');
+}
+$('#presetCats').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ presetCat=c.dataset.c; renderPresets(); } };
+$('#presets').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; applyPreset(c.dataset.p); toast(`${c.dataset.p} を入力しました。期限を確認して「冷蔵庫に入れる」`); };
+function applyPreset(name){
+  const p = PRESETS.find(x=>x[0]===name); if(!p) return;
+  $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
+  $('#expHint').textContent=`（目安: ${p[2]}日）`;
+  $('#f-staple').checked = state.staples.includes(p[0]);
+}
+$('#f-name').addEventListener('change', e=>{
+  const p = PRESETS.find(x=>x[0]===e.target.value);
+  if(p && !$('#f-id').value){ applyPreset(p[0]); }
+  if(state.staples.includes(e.target.value)) $('#f-staple').checked=true;
+});
+document.querySelectorAll('#tab-add .chip[data-days]').forEach(c=>c.onclick=()=>{ $('#f-exp').value = c.dataset.days===''?'':addDays(+c.dataset.days); });
+function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; }
+function editItem(item){
+  showTab('add');
+  $('#f-id').value=item.id; $('#f-name').value=item.name; $('#f-cat').value=item.cat; $('#f-loc').value=item.loc; $('#f-qty').value=item.qty; $('#f-unit').value=item.unit; $('#f-exp').value=item.exp||''; $('#f-memo').value=item.memo||''; $('#f-staple').checked=!!item.staple;
+  $('#formTitle').textContent='食材を編集'; $('#submitBtn').textContent='保存'; $('#cancelEdit').style.display='block';
+  window.scrollTo(0, $('#form').offsetTop-80);
+}
+$('#cancelEdit').onclick = ()=>{ resetForm(); showTab('list'); };
+$('#form').onsubmit = e=>{
+  e.preventDefault();
+  const data = {name:$('#f-name').value.trim(), cat:$('#f-cat').value, loc:$('#f-loc').value, qty:+$('#f-qty').value||1, unit:$('#f-unit').value.trim()||'個', exp:$('#f-exp').value||null, memo:$('#f-memo').value.trim(), staple:$('#f-staple').checked};
+  if(!data.name) return;
+  if(data.staple && !state.staples.includes(data.name)) state.staples.push(data.name);
+  if(!data.staple) state.staples = state.staples.filter(s=>s!==data.name);
+  const id=$('#f-id').value;
+  if(id){ Object.assign(state.items.find(i=>i.id===id), data); toast('保存しました'); save(); resetForm(); showTab('list'); return; }
+  state.items.push(Object.assign({id:uid(), added:todayStr()}, data));
+  // 買い物リストに同名があればチェック済みに
+  state.shopping.forEach(s=>{ if(s.name===data.name) s.done=true; });
+  save(); toast(`${data.name} を追加しました`);
+  const keep = $('#f-staple').checked; resetForm(); renderAll(); $('#f-name').focus();
+};
+
+// ---------- レシピ ----------
+let rmode='urgent';
+document.querySelectorAll('[data-rmode]').forEach(c=>c.onclick=()=>{ rmode=c.dataset.rmode; document.querySelectorAll('[data-rmode]').forEach(x=>x.classList.toggle('on',x===c)); renderRecipes(); });
+function matchItems(keys){ return state.items.filter(it=>keys.some(k=>it.name.includes(k)||(it.name.length>=2 && k.includes(it.name)))); }
+function urgencyWeight(it){ const s=statusOf(it); return s==='expired'?4: s==='urgent'?3: s==='soon'?1.5: 0; }
+function scoreRecipes(){
+  return RECIPES.map(r=>{
+    let score=0, urgent=0; const used=[], missing=[];
+    r.i.forEach(([label,keys])=>{
+      const m = matchItems(keys);
+      if(m.length){ const best=m.sort((a,b)=>urgencyWeight(b)-urgencyWeight(a))[0]; used.push(best); score+=1+urgencyWeight(best); if(urgencyWeight(best)>=1.5) urgent++; }
+      else missing.push(label);
+    });
+    const coverage = used.length / r.i.length;
+    return {r, score: score + coverage*2, used, missing, coverage, urgent};
+  }).filter(x=>x.used.length>0);
+}
+function renderRecipes(){
+  let list = scoreRecipes();
+  if(rmode==='urgent') list = list.filter(x=>x.urgent>0);
+  list.sort((a,b)=>b.score-a.score);
+  if(!list.length){ $('#recipeList').innerHTML = `<div class="empty">${rmode==='urgent'?'期限が近い食材を使うレシピは今ありません。<br>「作れるもの全部」も見てみてください。':'食材を登録するとレシピを提案します。'}</div>`; return; }
+  $('#recipeList').innerHTML = list.slice(0,20).map((x,idx)=>`<div class="card recipe" data-idx="${idx}">
+    <div class="title"><b>${esc(x.r.n)}</b><span class="hint">約${x.r.t}分 ・ 材料 ${x.used.length}/${x.r.i.length} あり</span></div>
+    <div class="sub">使う食材</div>
+    <div class="chips">${x.used.map(it=>`<span class="chip tag ${statusOf(it)}">${esc(it.name)}（${expLabel(it)}）</span>`).join('')}${x.missing.map(m=>`<span class="chip tag missing">${esc(m)}</span>`).join('')}</div>
+    <div class="sub">調味料: ${esc(x.r.s)}</div>
+    <details><summary>作り方</summary><ol>${x.r.p.map(p=>`<li>${esc(p)}</li>`).join('')}</ol></details>
+    <div class="actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      <button class="sm primary" data-act="cook">作った（使った食材を記録）</button>
+      ${x.missing.length?`<button class="sm" data-act="buy">足りないものを買い物リストへ</button>`:''}
+    </div>
+  </div>`).join('');
+  $('#recipeList')._list = list;
+}
+$('#recipeList').onclick = e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const x=$('#recipeList')._list[+e.target.closest('.recipe').dataset.idx];
+  if(b.dataset.act==='buy'){ x.missing.forEach(m=>addShop(m)); toast('買い物リストに追加しました'); }
+  if(b.dataset.act==='cook'){
+    const names = x.used.map(it=>it.name).join('、');
+    if(confirm(`「${x.r.n}」で使った食材を選びます。\n\n${names}\n\n上の食材を全部「使い切った」にしますか？\n（キャンセル → 一覧から個別に −1 や使い切ったを押してください）`)){
+      x.used.forEach(it=>finish(it,'used')); toast('記録しました'); renderRecipes();
+    }
+  }
+};
+function showAiText(txt){ let ta=$('#aiText'); if(!ta){ ta=document.createElement('textarea'); ta.id='aiText'; ta.rows=8; ta.style.marginTop='8px'; $('#aiPrompt').after(ta); } ta.value=txt; ta.select(); toast('下の文章をコピーして使ってください'); }
+$('#aiPrompt').onclick = async ()=>{
+  const near = state.items.filter(i=>['expired','urgent','soon'].includes(statusOf(i)));
+  const rest = state.items.filter(i=>!near.includes(i));
+  const txt = `冷蔵庫にある食材でレシピを提案してください。\n\n【早く使いたい食材】\n${near.map(i=>`- ${i.name} ${i.qty}${i.unit}（${expLabel(i)}）`).join('\n')||'- なし'}\n\n【その他にある食材】\n${rest.map(i=>`- ${i.name} ${i.qty}${i.unit}`).join('\n')||'- なし'}\n\n早く使いたい食材をできるだけ使う、家庭で作りやすい料理を3つ、材料と手順つきで教えてください。`;
+  try{ await navigator.clipboard.writeText(txt); toast('コピーしました。ChatGPTやClaudeに貼り付けてください'); }catch(e){ showAiText(txt); }
+};
+
+// ---------- 買い物 ----------
+function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !s.done)) return; state.shopping.push({id:uid(), name, done:false, auto}); save(); renderShop(); }
+$('#shopForm').onsubmit = e=>{ e.preventDefault(); const n=$('#shopName').value.trim(); if(n){ addShop(n); $('#shopName').value=''; } };
+function renderShop(){
+  $('#shopList').innerHTML = state.shopping.length? state.shopping.map(s=>`<div class="shop ${s.done?'done':''}" data-id="${s.id}"><input type="checkbox" ${s.done?'checked':''}><span class="n">${esc(s.name)}${s.auto?' <span class="hint" style="display:inline">(常備品)</span>':''}</span><button class="sm" data-act="del">✕</button></div>`).join('') : '<div class="empty">買い物リストは空です</div>';
+  const inFridge = new Set(state.items.map(i=>i.name));
+  const inShop = new Set(state.shopping.filter(s=>!s.done).map(s=>s.name));
+  const out = state.staples.filter(s=>!inFridge.has(s) && !inShop.has(s));
+  $('#stapleList').innerHTML = out.length? `<div class="chips" style="margin-top:6px">${out.map(s=>`<span class="chip" data-s="${esc(s)}">＋ ${esc(s)}</span>`).join('')}</div>` : '<div class="hint">切れている常備品はありません</div>';
+}
+$('#shopList').onclick = e=>{
+  const row=e.target.closest('.shop'); if(!row) return; const s=state.shopping.find(x=>x.id===row.dataset.id);
+  if(e.target.matches('input')){ s.done=e.target.checked; save(); renderShop(); }
+  if(e.target.dataset.act==='del'){ state.shopping=state.shopping.filter(x=>x!==s); save(); renderShop(); }
+};
+$('#stapleList').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s, true); toast('買い物リストに追加'); } };
+$('#shopClear').onclick = ()=>{ state.shopping=state.shopping.filter(s=>!s.done); save(); renderShop(); };
+let fridgeQueue=[];
+$('#shopToFridge').onclick = ()=>{
+  fridgeQueue = state.shopping.filter(s=>s.done).map(s=>s.name);
+  if(!fridgeQueue.length){ toast('チェックされた項目がありません'); return; }
+  state.shopping=state.shopping.filter(s=>!s.done); save();
+  nextFromQueue();
+};
+function nextFromQueue(){
+  const n=fridgeQueue.shift(); if(!n){ showTab('list'); return; }
+  resetForm(); showTab('add'); $('#f-name').value=n; applyPreset(n); if(state.staples.includes(n)) $('#f-staple').checked=true;
+  $('#formTitle').textContent=`買ってきたものを登録（残り ${fridgeQueue.length} 件）`;
+  toast(`${n} の期限と数量を確認してください`);
+}
+const origSubmit = $('#form').onsubmit;
+$('#form').onsubmit = e=>{ origSubmit(e); if(fridgeQueue.length) nextFromQueue(); };
+
+// ---------- 記録・統計 ----------
+function renderLog(){
+  const m = todayStr().slice(0,7);
+  const hm = state.history.filter(h=>h.date.startsWith(m));
+  const used = hm.filter(h=>h.type==='used').length, waste = hm.filter(h=>h.type==='waste').length;
+  const rate = used+waste? Math.round(waste/(used+waste)*100):0;
+  $('#stats').innerHTML = `<div><b>${used}</b><span>使い切り</span></div><div><b style="color:var(--expired)">${waste}</b><span>廃棄</span></div><div><b>${rate}%</b><span>廃棄率</span></div>`;
+  const wc = {}; state.history.filter(h=>h.type==='waste').forEach(h=>wc[h.name]=(wc[h.name]||0)+1);
+  const top = Object.entries(wc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  $('#wasteTop').innerHTML = top.length? 'よく捨てているもの: '+top.map(([n,c])=>`${esc(n)}（${c}回）`).join('、')+'。買う量を減らすか、冷凍を検討。' : '廃棄の記録はまだありません。';
+  $('#history').innerHTML = state.history.length? state.history.slice(0,60).map(h=>`<div class="hist"><span>${h.date.replace(/-/g,'/')}　${esc(h.name)}</span><span style="color:${h.type==='waste'?'var(--expired)':'var(--ok)'}">${h.type==='waste'?'廃棄':'使い切り'}</span></div>`).join('') : '<div class="empty">まだ記録がありません</div>';
+}
+$('#export').onclick = ()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,1)],{type:'application/json'})); a.download=`fridge-${todayStr()}.json`; a.click(); };
+$('#importBtn').onclick = ()=>$('#importFile').click();
+$('#importFile').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!Array.isArray(s.items)) throw 0; if(confirm('今のデータを読み込んだ内容で置き換えますか？')){ state=Object.assign({items:[],history:[],shopping:[],staples:[]}, s); save(); renderAll(); toast('読み込みました'); } }catch(err){ alert('ファイルの形式が違います'); } }; r.readAsText(f); e.target.value=''; };
+$('#wipe').onclick = ()=>{ if(confirm('全データを削除します。よろしいですか？')&&confirm('本当に削除しますか？元に戻せません。')){ state={items:[],history:[],shopping:[],staples:[]}; save(); renderAll(); } };
+$('#sample').onclick = ()=>{
+  const add=(n,d,q,u)=>{ const p=PRESETS.find(x=>x[0]===n)||[n,'その他',7,'個','冷蔵']; state.items.push({id:uid(),name:n,cat:p[1],loc:p[4],qty:q??1,unit:u??p[3],exp:d===null?null:addDays(d),memo:'',staple:['牛乳','卵'].includes(n),added:todayStr()}); };
+  add('牛乳',1); add('卵',6,8); add('豆腐',-1); add('鶏もも肉',0,300,'g'); add('キャベツ',4,0.5,'玉'); add('玉ねぎ',20,3); add('にんじん',9,2); add('じゃがいも',25,4); add('もやし',1); add('長ねぎ',3); add('ごはん(冷凍)',30,3); add('味噌',150); add('ヨーグルト',2); add('食パン',2); add('ウインナー',5);
+  ['牛乳','卵'].forEach(s=>{ if(!state.staples.includes(s)) state.staples.push(s); });
+  save(); renderAll(); showTab('list'); toast('サンプルを追加しました');
+};
+
+// ---------- 通知 ----------
+function settings(){ if(!state.settings) state.settings={notify:false, notifyDays:2, lastNotified:''}; return state.settings; }
+function notifyStatus(){
+  const s=settings(); const el=$('#n-status');
+  if(!('Notification' in window)){ el.textContent='この環境は通知に対応していません。iPhone の場合は「ホーム画面に追加」したアプリから開くと使えます（iOS 16.4以降）。'; return; }
+  if(Notification.permission==='denied'){ el.textContent='通知がブロックされています。ブラウザの設定でこのサイトの通知を許可してください。'; return; }
+  if(location.protocol==='file:'){ el.textContent='ファイルを直接開いている状態では通知が使えないブラウザがあります。公開URLから開くか、ホーム画面に追加してください。'; return; }
+  el.textContent = s.notify? `有効（${s.notifyDays}日前から・1日1回）` : '無効';
+}
+async function requestNotify(){
+  if(!('Notification' in window)) return false;
+  if(Notification.permission==='granted') return true;
+  const p = await Notification.requestPermission(); return p==='granted';
+}
+async function showNotification(title, body){
+  try{
+    const reg = await (navigator.serviceWorker && navigator.serviceWorker.getRegistration());
+    if(reg && reg.showNotification){ await reg.showNotification(title,{body, icon:'icon-192.png', badge:'icon-192.png', tag:'fridge-expiry'}); }
+    else { new Notification(title,{body, icon:'icon-192.png', tag:'fridge-expiry'}); }
+    return true;
+  }catch(e){ console.warn(e); return false; }
+}
+function expiringItems(days){ return state.items.filter(i=>{ const d=daysLeft(i.exp); return d!==null && d<=days; }).sort((a,b)=>daysLeft(a.exp)-daysLeft(b.exp)); }
+async function checkAndNotify(force=false){
+  const s=settings(); if(!s.notify && !force) return;
+  if(!force && s.lastNotified===todayStr()) return;
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const list = expiringItems(+s.notifyDays);
+  if(!list.length){ if(force) toast('期限が近い食材はありません'); return; }
+  const body = list.slice(0,6).map(i=>`${i.name}（${expLabel(i)}）`).join('、') + (list.length>6?` ほか${list.length-6}件`:'');
+  const ok = await showNotification(`期限が近い食材が${list.length}件あります`, body);
+  if(ok && !force){ s.lastNotified=todayStr(); save(); }
+}
+$('#n-on').onchange = async e=>{
+  const s=settings();
+  if(e.target.checked){ const ok=await requestNotify(); if(!ok){ e.target.checked=false; toast('通知が許可されませんでした'); notifyStatus(); return; } s.notify=true; save(); notifyStatus(); checkAndNotify(true); }
+  else { s.notify=false; save(); notifyStatus(); }
+};
+$('#n-days').onchange = e=>{ settings().notifyDays=+e.target.value; save(); notifyStatus(); };
+$('#n-test').onclick = async ()=>{ const ok=await requestNotify(); if(!ok){ toast('通知が許可されていません'); notifyStatus(); return; } const list=expiringItems(+settings().notifyDays); if(list.length) checkAndNotify(true); else showNotification('冷蔵庫管理のテスト通知','通知はこのように表示されます'); };
+function renderNotify(){ const s=settings(); $('#n-on').checked=!!s.notify; $('#n-days').value=String(s.notifyDays); notifyStatus(); }
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ renderAll(); checkAndNotify(); } });
+
+// ---------- カレンダー書き出し (.ics) ----------
+$('#c-export').onclick = ()=>{
+  const items = state.items.filter(i=>i.exp);
+  if(!items.length){ toast('期限のある食材がありません'); return; }
+  const [hh,mm] = ($('#c-time').value||'09:00').split(':');
+  const before = +$('#c-days').value;
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  const icsEsc=s=>String(s).replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
+  const stamp = fmt(new Date()).replace(/T.*/,'T000000Z');
+  // 同じ日のものは1つの予定にまとめる
+  const byDay = {};
+  items.forEach(i=>{ const d=new Date(i.exp+'T00:00:00'); d.setDate(d.getDate()-before); const k=todayStr(d); (byDay[k]=byDay[k]||[]).push(i); });
+  const events = Object.entries(byDay).filter(([day])=>day>=todayStr()).map(([day,list])=>{
+    if(!list) return '';
+    const start=new Date(day+'T00:00:00'); start.setHours(+hh,+mm,0,0); const end=new Date(start.getTime()+30*60000);
+    const title = list.length===1? `🧊 ${list[0].name} の期限${before?`（${before}日前）`:'（当日）'}` : `🧊 食材の期限 ${list.length}件${before?`（${before}日前）`:''}`;
+    const desc = list.map(i=>`・${i.name} ${i.qty}${i.unit}：${i.exp.replace(/-/g,'/')}まで`).join('\n');
+    return ['BEGIN:VEVENT',`UID:fridge-${day}-${Date.now()}@fridge-app`,`DTSTAMP:${stamp}`,`DTSTART:${fmt(start)}`,`DTEND:${fmt(end)}`,`SUMMARY:${icsEsc(title)}`,`DESCRIPTION:${icsEsc(desc)}`,'BEGIN:VALARM','TRIGGER:PT0M','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(title)}`,'END:VALARM','END:VEVENT'].join('\r\n');
+  });
+  if(!events.length){ toast('今日以降に期限が来る食材がありません'); return; }
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//fridge-app//JP','CALSCALE:GREGORIAN','X-WR-CALNAME:冷蔵庫の期限',...events,'END:VCALENDAR'].join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'})); a.download=`fridge-${todayStr()}.ics`; a.click();
+  toast(`${events.length}件の予定を書き出しました`);
+};
+
+// ---------- PWA ----------
+let installPrompt=null;
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installPrompt=e; const b=$('#installBanner'); b.style.display='block'; b.innerHTML='📱 ホーム画面に追加すると、アプリのように起動できて通知も使えます。 <button class="sm primary" id="installBtn">追加する</button>'; $('#installBtn').onclick=async()=>{ installPrompt.prompt(); await installPrompt.userChoice; b.style.display='none'; }; });
+if(/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone && location.protocol!=='file:'){ const b=$('#installBanner'); b.style.display='block'; b.textContent='📱 Safari の共有ボタン → 「ホーム画面に追加」で、アプリのように使えて通知も有効になります。'; }
+if('serviceWorker' in navigator && location.protocol!=='file:'){ navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW登録失敗', e)); }
+
+// ---------- 全体 ----------
+function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderLog(); renderNotify(); }
+load(); fillSelects(); resetForm(); renderAll();
+checkAndNotify();
+// 日付が変わったら再描画
+setInterval(renderAll, 60*1000);
+</script>
+</body>
+</html>
