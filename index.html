@@ -176,9 +176,15 @@
         <div><label>分類</label><select id="f-cat"></select></div>
         <div><label>保存場所</label><select id="f-loc"></select></div>
       </div>
+      <div id="leftoverBar" class="panel" style="display:none;margin-top:10px">
+        <div class="hint">🍲 作った料理の残りです。何食分残っていますか？</div>
+        <div class="chips" id="servingChips"><span class="chip" data-serv="1">1食分</span><span class="chip" data-serv="2">2食分</span><span class="chip" data-serv="3">3食分</span><span class="chip" data-serv="4">4食分</span><span class="chip" data-serv="6">6食分</span></div>
+        <div class="chips" style="margin-top:6px" id="keepChips"><span class="chip" data-keep="冷蔵">冷蔵（目安3日）</span><span class="chip" data-keep="冷凍">冷凍（目安1か月）</span></div>
+        <div class="hint" style="margin-top:6px">「食べた」で1食分ずつ減らせます。レシピ画面の先頭にも「先に食べるもの」として出ます。</div>
+      </div>
       <div class="row">
         <div><label>数量</label><input id="f-qty" type="number" min="0" step="0.5" value="1"></div>
-        <div><label>単位</label><input id="f-unit" value="個" list="unitList"><datalist id="unitList"><option>個<option>本<option>パック<option>袋<option>g<option>ml<option>枚<option>玉<option>切れ</datalist></div>
+        <div><label>単位</label><input id="f-unit" value="個" list="unitList"><datalist id="unitList"><option>個<option>本<option>パック<option>袋<option>g<option>ml<option>枚<option>玉<option>切れ<option>食分</datalist></div>
       </div>
       <label>賞味・消費期限 <span class="hint" style="display:inline" id="expHint"></span></label>
       <input id="f-exp" type="date">
@@ -358,6 +364,16 @@
       <p>食材名は部分一致です。「鶏もも肉」も「鶏むね肉」も「鶏肉」のレシピに当たります。商品名ではなく一般的な名前で登録してください。</p>
     </details>
     <details>
+      <summary>作った料理の残り（作り置き）</summary>
+      <p>カレーや煮物など、作って残った料理も「<b>作った料理</b>」として冷蔵庫に入れておけます。単位は「食分」で、食べたら1食分ずつ減らします。</p>
+      <ul>
+        <li><b>レシピから</b>：レシピの「作った」を押すと、続けて「残りを登録」の画面が開きます。何食分残っているかと、冷蔵（目安3日）か冷凍（目安1か月）かを選んで「残りを冷蔵庫に入れる」。残っていなければ「残っていない（登録しない）」。</li>
+        <li><b>自分で作った料理</b>：追加タブの先頭「作った料理の残り」で、最近作った料理をタップするか「料理名を入力して登録」。</li>
+        <li><b>食べたとき</b>：一覧の「食べた」、またはレシピ画面の先頭に出る「作った料理の残り（先に食べる）」の「食べた（−1食分）」。全部食べたら「全部食べた」。</li>
+      </ul>
+      <p>作った料理は期限が短いので、レシピ画面でいちばん上に出ます。献立を考える前に、まず残り物を確認できます。</p>
+    </details>
+    <details>
       <summary>買い物リストと常備品</summary>
       <p>自分で入力する、一覧の「買い足す」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを冷蔵庫に入れる」で登録します。</p>
       <p>常備品を使い切ると自動でリストに入り、「切れている常備品」にも表示されます。常備品をやめるには、一覧の「編集」でチェックを外して保存します。</p>
@@ -404,7 +420,9 @@
 
 <script>
 // ---------- 定数 ----------
-const CATS = ['野菜','肉','魚','乳製品・卵','大豆・加工品','主食・パン','調味料','飲み物','その他'];
+const CATS = ['作った料理','野菜','肉','魚','乳製品・卵','大豆・加工品','主食・パン','調味料','飲み物','その他'];
+const COOKED = '作った料理';
+const isCooked = it => it && it.cat===COOKED;
 const LOCS = ['冷蔵','冷凍','野菜室','常温'];
 // よく買うもの: [名前, 分類, 目安日数, 単位, 保存場所]
 const PRESETS = [
@@ -551,10 +569,10 @@ function renderList(){
     const st=statusOf(i);
     return `<div class="card item ${st}" data-id="${i.id}">
       <div class="body">
-        <div class="name">${esc(i.name)} <span style="font-weight:400;font-size:13px;color:var(--sub)">${i.qty}${esc(i.unit)}</span>${i.staple?' <span class="chip tag" style="font-size:10px;padding:1px 6px">常備</span>':''}</div>
+        <div class="name">${isCooked(i)?'🍲 ':''}${esc(i.name)} <span style="font-weight:400;font-size:13px;color:var(--sub)">${fmtQty(i.qty)}${esc(i.unit)}</span>${i.staple?' <span class="chip tag" style="font-size:10px;padding:1px 6px">常備</span>':''}</div>
         <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ ${esc(i.loc)} ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
         <div class="actions">
-          <button class="sm primary" data-act="dec">減らす</button>
+          <button class="sm primary" data-act="dec">${isCooked(i)?'食べた':'減らす'}</button>
           <button class="sm" data-act="shop">買い足す</button>
           <button class="sm" data-act="edit">編集</button>
           <button class="sm" data-act="more" style="margin-left:auto">使い切った・捨てた…</button>
@@ -578,8 +596,8 @@ function renderPanel(i){
   if(openPanel.kind==='dec'){
     const steps=decSteps(i).filter(s=>s<i.qty);
     return `<div class="panel">
-      <div class="hint">残り <b>${fmtQty(i.qty)}${esc(i.unit)}</b>。使った分を押してください。</div>
-      <div class="btns">${steps.map(s=>`<button class="sm" data-act="sub" data-n="${s}">−${s}${esc(i.unit)}</button>`).join('')}<button class="sm" data-act="half">半分使った</button><button class="sm primary" data-act="zero">全部使った（0にする）</button></div>
+      <div class="hint">残り <b>${fmtQty(i.qty)}${esc(i.unit)}</b>。${isCooked(i)?'食べた分':'使った分'}を押してください。</div>
+      <div class="btns">${steps.map(s=>`<button class="sm" data-act="sub" data-n="${s}">−${s}${esc(i.unit)}</button>`).join('')}<button class="sm" data-act="half">半分${isCooked(i)?'食べた':'使った'}</button><button class="sm primary" data-act="zero">全部${isCooked(i)?'食べた':'使った'}（0にする）</button></div>
       <div class="inp"><span class="hint" style="margin:0">残りを直接入力:</span><input type="number" min="0" step="any" value="${fmtQty(i.qty)}" data-role="rest"><span>${esc(i.unit)}</span><button class="sm" data-act="setrest">決定</button><button class="sm" data-act="close" style="margin-left:auto">閉じる</button></div>
     </div>`;
   }
@@ -628,14 +646,16 @@ function fillSelects(){
   $('#f-loc').innerHTML = LOCS.map(c=>`<option>${c}</option>`).join('');
   $('#nameList').innerHTML = PRESETS.map(p=>`<option value="${p[0]}">`).join('');
 }
-const CAT_EMOJI = {'野菜':'🥬','肉':'🥩','魚':'🐟','乳製品・卵':'🥚','大豆・加工品':'🫘','主食・パン':'🍞','調味料':'🧂','飲み物':'🥤','その他':'📦'};
+const CAT_EMOJI = {'作った料理':'🍲','野菜':'🥬','肉':'🥩','魚':'🐟','乳製品・卵':'🥚','大豆・加工品':'🫘','主食・パン':'🍞','調味料':'🧂','飲み物':'🥤','その他':'📦'};
 const EMOJI = {牛乳:'🥛',卵:'🥚',ヨーグルト:'🥣',チーズ:'🧀',バター:'🧈',豆腐:'🍮',納豆:'🫘',ウインナー:'🌭',ベーコン:'🥓',ハム:'🍖',油揚げ:'🟫',鶏もも肉:'🍗',鶏むね肉:'🍗',豚こま肉:'🐖',豚バラ肉:'🥓',牛こま肉:'🐄',ひき肉:'🥩',鮭:'🐟',さば:'🐟',しらす:'🐟',キャベツ:'🥬',玉ねぎ:'🧅',にんじん:'🥕',じゃがいも:'🥔',もやし:'🌱',トマト:'🍅',きゅうり:'🥒',ほうれん草:'🥬',長ねぎ:'🌿',ピーマン:'🫑',大根:'🥕',レタス:'🥬',白菜:'🥬',なす:'🍆',きのこ:'🍄',バナナ:'🍌',食パン:'🍞',うどん:'🍜',焼きそば麺:'🍜','ごはん(冷凍)':'🍚',パスタ:'🍝',味噌:'🥣',マヨネーズ:'🧴',ケチャップ:'🍅',めんつゆ:'🍶',ポン酢:'🍋',麦茶:'🍵',ジュース:'🧃'};
 let presetQ = '';
 function renderPresets(){
   const cats = CATS.filter(c=>PRESETS.some(p=>p[1]===c));
-  $('#presetCats').innerHTML = cats.map(c=>`<span class="chip" data-c="${c}">${CAT_EMOJI[c]||''} ${c}</span>`).join('');
+  $('#presetCats').innerHTML = [`<span class="chip" data-c="${COOKED}">🍲 ${COOKED}</span>`, ...cats.map(c=>`<span class="chip" data-c="${c}">${CAT_EMOJI[c]||''} ${c}</span>`)].join('');
   const q = presetQ.trim();
-  const html = cats.map(c=>{
+  const cooked = (state.cooked||[]).filter(c=>!q || c.name.includes(q));
+  const cookedHtml = (!q || cooked.length) ? `<div class="pgroup" data-cat="${COOKED}"><div class="ptitle">🍲 作った料理の残り（作り置き）</div><div class="pgrid">${cooked.map(c=>`<button type="button" class="pchip" data-leftover="${esc(c.name)}"><span class="em">🍲</span><span>${esc(c.name)}</span></button>`).join('')}<button type="button" class="pchip" data-leftover="" style="border-style:dashed"><span class="em">✏️</span><span>料理名を入力して登録</span></button></div></div>` : '';
+  const html = cookedHtml + cats.map(c=>{
     const list = PRESETS.filter(p=>p[1]===c && (!q || p[0].includes(q)));
     if(!list.length) return '';
     return `<div class="pgroup" data-cat="${c}"><div class="ptitle">${CAT_EMOJI[c]||''} ${c}</div><div class="pgrid">${list.map(p=>`<button type="button" class="pchip" data-p="${esc(p[0])}"><span class="em">${EMOJI[p[0]]||CAT_EMOJI[c]||'🍽️'}</span><span>${esc(p[0])}</span></button>`).join('')}</div></div>`;
@@ -644,7 +664,9 @@ function renderPresets(){
 }
 $('#presetSearch').oninput = e=>{ presetQ=e.target.value; renderPresets(); };
 $('#presetCats').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; presetQ=''; $('#presetSearch').value=''; renderPresets(); const g=document.querySelector(`.pgroup[data-cat="${c.dataset.c}"]`); if(g) g.scrollIntoView({behavior:'smooth', block:'start'}); };
-$('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return; applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「冷蔵庫に入れる」`); };
+$('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return;
+  if(c.dataset.leftover!==undefined){ offerLeftover(c.dataset.leftover); if(!c.dataset.leftover){ $('#formTitle').textContent='🍲 作った料理の残りを登録'; $('#f-name').value=''; $('#f-name').placeholder='例：カレー'; $('#f-name').focus(); } return; }
+  applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「冷蔵庫に入れる」`); };
 function applyPreset(name){
   const p = PRESETS.find(x=>x[0]===name); if(!p) return;
   $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
@@ -657,11 +679,38 @@ $('#f-name').addEventListener('change', e=>{
   if(state.staples.includes(e.target.value)) $('#f-staple').checked=true;
 });
 document.querySelectorAll('#tab-add .chip[data-days]').forEach(c=>c.onclick=()=>{ $('#f-exp').value = c.dataset.days===''?'':addDays(+c.dataset.days); });
-function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; }
+function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
+function updateLeftoverBar(){
+  const on = $('#f-cat').value===COOKED;
+  $('#leftoverBar').style.display = on? 'block':'none';
+  const q=+$('#f-qty').value, loc=$('#f-loc').value;
+  document.querySelectorAll('#servingChips .chip').forEach(c=>c.classList.toggle('on', on && +c.dataset.serv===q));
+  document.querySelectorAll('#keepChips .chip').forEach(c=>c.classList.toggle('on', on && c.dataset.keep===loc));
+}
+$('#f-cat').addEventListener('change', ()=>{
+  if($('#f-cat').value===COOKED && !$('#f-id').value){ $('#f-unit').value='食分'; $('#f-loc').value='冷蔵'; $('#f-exp').value=addDays(3); $('#expHint').textContent='（冷蔵は3日、冷凍は1か月が目安）'; if(!$('#f-memo').value) $('#f-memo').value=`${todayStr().slice(5).replace('-','/')}に作った`; }
+  updateLeftoverBar();
+});
+$('#f-loc').addEventListener('change', ()=>{ if($('#f-cat').value===COOKED && !$('#f-id').value){ $('#f-exp').value=addDays($('#f-loc').value==='冷凍'?30:3); } updateLeftoverBar(); });
+$('#f-qty').addEventListener('input', updateLeftoverBar);
+$('#servingChips').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; $('#f-qty').value=c.dataset.serv; updateLeftoverBar(); };
+$('#keepChips').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; $('#f-loc').value=c.dataset.keep; $('#f-exp').value=addDays(c.dataset.keep==='冷凍'?30:3); updateLeftoverBar(); };
+// 作った料理の残りを登録するフォームを開く
+function offerLeftover(name){
+  resetForm(); showTab('add');
+  $('#f-name').value=name; $('#f-cat').value=COOKED; $('#f-unit').value='食分'; $('#f-qty').value=2; $('#f-loc').value='冷蔵'; $('#f-exp').value=addDays(3);
+  $('#expHint').textContent='（冷蔵は3日、冷凍は1か月が目安）'; $('#f-memo').value=`${todayStr().slice(5).replace('-','/')}に作った`;
+  $('#formTitle').textContent=`🍲 「${name}」の残りを登録`; $('#submitBtn').textContent='残りを冷蔵庫に入れる';
+  $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='残っていない（登録しない）';
+  updateLeftoverBar();
+  $('#form').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function recordCooked(name){ state.cooked=(state.cooked||[]).filter(c=>c.name!==name); state.cooked.unshift({name, date:todayStr()}); state.cooked=state.cooked.slice(0,12); }
 function editItem(item){
   showTab('add');
   $('#f-id').value=item.id; $('#f-name').value=item.name; $('#f-cat').value=item.cat; $('#f-loc').value=item.loc; $('#f-qty').value=item.qty; $('#f-unit').value=item.unit; $('#f-exp').value=item.exp||''; $('#f-memo').value=item.memo||''; $('#f-staple').checked=!!item.staple;
-  $('#formTitle').textContent='食材を編集'; $('#submitBtn').textContent='保存'; $('#cancelEdit').style.display='block';
+  $('#formTitle').textContent='食材を編集'; $('#submitBtn').textContent='保存'; $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='キャンセル';
+  updateLeftoverBar();
   window.scrollTo(0, $('#form').offsetTop-80);
 }
 $('#cancelEdit').onclick = ()=>{ resetForm(); showTab('list'); };
@@ -673,6 +722,7 @@ $('#form').onsubmit = e=>{
   if(!data.staple) state.staples = state.staples.filter(s=>s!==data.name);
   const id=$('#f-id').value;
   if(id){ touch(Object.assign(state.items.find(i=>i.id===id), data)); toast('保存しました'); save(); resetForm(); showTab('list'); return; }
+  if(data.cat===COOKED){ data.made=todayStr(); recordCooked(data.name); }
   state.items.push(touch(Object.assign({id:uid(), added:todayStr()}, data)));
   // 買い物リストに同名があればチェック済みに
   state.shopping.forEach(s=>{ if(s.name===data.name && !s.done){ s.done=true; touch(s); } });
@@ -701,8 +751,8 @@ function renderRecipes(){
   let list = scoreRecipes();
   if(rmode==='urgent') list = list.filter(x=>x.urgent>0);
   list.sort((a,b)=>b.score-a.score);
-  if(!list.length){ $('#recipeList').innerHTML = `<div class="empty">${rmode==='urgent'?'期限が近い食材を使うレシピは今ありません。<br>「作れるもの全部」も見てみてください。':'食材を登録するとレシピを提案します。'}</div>`; return; }
-  $('#recipeList').innerHTML = list.slice(0,20).map((x,idx)=>`<div class="card recipe" data-idx="${idx}">
+  if(!list.length){ $('#recipeList').innerHTML = renderLeftovers() + `<div class="empty">${rmode==='urgent'?'期限が近い食材を使うレシピは今ありません。<br>「作れるもの全部」も見てみてください。':'食材を登録するとレシピを提案します。'}</div>`; return; }
+  $('#recipeList').innerHTML = renderLeftovers() + list.slice(0,20).map((x,idx)=>`<div class="card recipe" data-idx="${idx}">
     <div class="title"><b>${esc(x.r.n)}</b><span class="hint">約${x.r.t}分 ・ 材料 ${x.used.length}/${x.r.i.length} あり</span></div>
     <div class="sub">使う食材</div>
     <div class="chips">${x.used.map(it=>`<span class="chip tag ${statusOf(it)}">${esc(it.name)}（${expLabel(it)}）</span>`).join('')}${x.missing.map(m=>`<span class="chip tag missing">${esc(m)}</span>`).join('')}</div>
@@ -716,16 +766,39 @@ function renderRecipes(){
   $('#recipeList')._list = list;
 }
 $('#recipeList').onclick = e=>{
-  const b=e.target.closest('button'); if(!b) return;
-  const x=$('#recipeList')._list[+e.target.closest('.recipe').dataset.idx];
+  const b=e.target.closest('button'); const rc=e.target.closest('.recipe'); if(!b||!rc) return;
+  const x=$('#recipeList')._list[+rc.dataset.idx];
   if(b.dataset.act==='buy'){ x.missing.forEach(m=>addShop(m)); toast('買い物リストに追加しました'); }
   if(b.dataset.act==='cook'){
     const names = x.used.map(it=>it.name).join('、');
-    if(confirm(`「${x.r.n}」で使った食材を選びます。\n\n${names}\n\n上の食材を全部「使い切った」にしますか？\n（キャンセル → 一覧から個別に −1 や使い切ったを押してください）`)){
-      x.used.forEach(it=>finish(it,'used')); toast('記録しました'); renderRecipes();
+    if(confirm(`「${x.r.n}」を作りました。\n\n使った食材: ${names}\n\nこれらを全部「使い切った」にしますか？\n（キャンセル → 食材は残したまま、一覧で「減らす」から使った分だけ減らせます）`)){
+      x.used.forEach(it=>finish(it,'used'));
     }
+    recordCooked(x.r.n); save();
+    offerLeftover(x.r.n);
   }
 };
+// 作り置き（作った料理）の「食べた」
+$('#recipeList').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-eat]'); if(!b) return;
+  const item=state.items.find(i=>i.id===b.dataset.id); if(!item) return;
+  if(b.dataset.eat==='all'){ finish(item,'used'); return; }
+  const q=+(item.qty-1).toFixed(2);
+  if(q<=0){ finish(item,'used'); return; }
+  item.qty=q; touch(item); save(); renderAll(); toast(`${item.name} 残り ${fmtQty(q)}${item.unit}`);
+});
+function renderLeftovers(){
+  const list = state.items.filter(isCooked).sort((a,b)=>(a.exp||'9999')<(b.exp||'9999')?-1:1);
+  if(!list.length) return '';
+  return `<div class="card" style="border-left:5px solid #a855f7">
+    <h2>🍲 作った料理の残り（先に食べる）</h2>
+    ${list.map(i=>`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)">
+      <div style="flex:1;min-width:140px"><b>${esc(i.name)}</b> <span class="hint" style="display:inline">${fmtQty(i.qty)}${esc(i.unit)}</span><br><span class="pill ${statusOf(i)}">${expLabel(i)}</span> <span class="hint" style="display:inline">${esc(i.loc)}${i.made?' ・ '+i.made.slice(5).replace('-','/')+'に作った':''}</span></div>
+      <button class="sm primary" data-eat="one" data-id="${i.id}">食べた（−1${esc(i.unit)}）</button>
+      <button class="sm" data-eat="all" data-id="${i.id}">全部食べた</button>
+    </div>`).join('')}
+  </div>`;
+}
 function showAiText(txt){ let ta=$('#aiText'); if(!ta){ ta=document.createElement('textarea'); ta.id='aiText'; ta.rows=8; ta.style.marginTop='8px'; $('#aiPrompt').after(ta); } ta.value=txt; ta.select(); toast('下の文章をコピーして使ってください'); }
 $('#aiPrompt').onclick = async ()=>{
   const near = state.items.filter(i=>['expired','urgent','soon'].includes(statusOf(i)));
@@ -787,6 +860,8 @@ function loadSample(silent){
   const add=(n,d,q,u)=>{ const p=PRESETS.find(x=>x[0]===n)||[n,'その他',7,'個','冷蔵']; state.items.push({id:uid(),name:n,cat:p[1],loc:p[4],qty:q??1,unit:u??p[3],exp:d===null?null:addDays(d),memo:'',staple:['牛乳','卵'].includes(n),added:todayStr()}); };
   add('牛乳',1); add('卵',6,8); add('豆腐',-1); add('鶏もも肉',0,300,'g'); add('キャベツ',4,0.5,'玉'); add('玉ねぎ',20,3); add('にんじん',9,2); add('じゃがいも',25,4); add('もやし',1); add('長ねぎ',3); add('ごはん(冷凍)',30,3); add('味噌',150); add('ヨーグルト',2); add('食パン',2); add('ウインナー',5);
   ['牛乳','卵'].forEach(s=>{ if(!state.staples.includes(s)) state.staples.push(s); });
+  state.items.push({id:uid(),name:'カレー',cat:COOKED,loc:'冷蔵',qty:2,unit:'食分',exp:addDays(2),memo:`${todayStr().slice(5).replace('-','/')}に作った`,made:todayStr(),staple:false,added:todayStr()});
+  recordCooked('カレー'); recordCooked('肉じゃが');
   state.history.unshift({id:uid(),name:'ほうれん草',cat:'野菜',type:'waste',date:todayStr(),exp:null},{id:uid(),name:'牛乳',cat:'乳製品・卵',type:'used',date:todayStr(),exp:null},{id:uid(),name:'納豆',cat:'大豆・加工品',type:'used',date:todayStr(),exp:null});
   save(); renderAll(); if(!silent){ showTab('list'); toast('サンプルを追加しました'); }
 }
@@ -898,7 +973,7 @@ function mergeStates(local, remote){
     tombstones: [...dead].map(([id,t])=>({id,t})).sort((a,b)=>a.t-b.t).slice(-300),
   };
 }
-function adopt(s){ state = Object.assign({items:[],history:[],shopping:[],staples:[]}, s, {settings: state.settings}); saveLocal(); renderAll(); }
+function adopt(s){ state = Object.assign({items:[],history:[],shopping:[],staples:[]}, s, {settings: state.settings, cooked: state.cooked}); saveLocal(); renderAll(); }
 let pushTimer=null, syncing=false, pendingPush=false;
 function setShareStatus(msg){ const el=$('#shareStatus'); if(el) el.textContent=msg; }
 function schedulePush(){ if(!share) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushNow, 800); }
