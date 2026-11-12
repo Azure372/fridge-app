@@ -106,7 +106,27 @@
   .shop input[type=checkbox]{width:20px;height:20px}
   .shop .n{flex:1}
   .shop.done .n{text-decoration:line-through;color:var(--sub)}
-  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:20}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:20;display:flex;align-items:center;gap:12px;max-width:92vw}
+  #toast.show.action{pointer-events:auto}
+  #toast button{background:#fbbf24;color:#111827;border:0;border-radius:999px;padding:5px 12px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+  .panel{margin-top:8px;background:var(--bg);border-radius:10px;padding:10px}
+  .panel .hint{margin:0 0 6px}
+  .panel .btns{display:flex;flex-wrap:wrap;gap:6px}
+  .panel .btns button{font-size:14px;padding:9px 12px}
+  .panel .inp{display:flex;gap:6px;align-items:center;margin-top:8px}
+  .panel .inp input{width:90px;padding:8px}
+  .panel.danger .btns button{flex:1;min-width:120px;padding:12px}
+  .pgroup{margin-top:12px}
+  .ptitle{font-weight:700;font-size:14px;margin:0 0 6px}
+  .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .pchip{display:flex;align-items:center;gap:6px;padding:9px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14px;cursor:pointer;text-align:left;color:var(--text);min-width:0}
+  .pchip .em{font-size:18px;flex:0 0 auto}
+  .pchip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pchip:active{background:var(--accent-bg);border-color:var(--accent)}
+  .jump{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-top:8px}
+  .jump .chip{flex:0 0 auto}
+  @keyframes flash{0%{background:#fef08a}100%{background:#fff}}
+  .flash{animation:flash 1.2s ease-out}
   #toast.show{opacity:1}
   .hint{font-size:12px;color:var(--sub);margin:4px 0}
   .fab{position:fixed;right:18px;bottom:18px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:0;font-size:30px;box-shadow:0 4px 12px rgba(0,0,0,.25);cursor:pointer;z-index:6}
@@ -141,8 +161,9 @@
 <section id="tab-add">
   <div class="card">
     <h2>よく買うものから追加（タップで入力欄に反映）</h2>
-    <div class="chips" id="presetCats"></div>
-    <div class="chips" id="presets" style="margin-top:8px"></div>
+    <input type="search" id="presetSearch" placeholder="食材名で絞り込み（例：にんじん）">
+    <div class="jump" id="presetCats"></div>
+    <div id="presets"></div>
   </div>
   <div class="card">
     <h2 id="formTitle">食材を追加</h2>
@@ -317,11 +338,10 @@
       </table>
       <table>
         <tr><th>ボタン</th><th>起きること</th></tr>
-        <tr><td>−1</td><td>数量が1減る。0になると「使い切った」扱い</td></tr>
-        <tr><td>使い切った</td><td>一覧から消え、使い切りとして記録</td></tr>
-        <tr><td>捨てた</td><td>一覧から消え、廃棄として記録（統計に反映）</td></tr>
+        <tr><td>減らす</td><td>使った分を選ぶパネルが開く。g や ml なら −50/−100 など、個数なら −1/−2。「半分使った」や残量の直接入力もできる。0になると「使い切った」扱い</td></tr>
         <tr><td>買い足す</td><td>買い物リストに入る（食材は残る）</td></tr>
         <tr><td>編集</td><td>期限や数量を直す</td></tr>
+        <tr><td>使い切った・捨てた…</td><td>確認パネルが開き、「使い切った」か「捨てた（廃棄）」を選ぶ。押したあと6秒間は画面下の「元に戻す」で取り消せる</td></tr>
       </table>
       <p>上のチップで「期限切れ・近い」や保存場所・分類で絞り込めます。</p>
     </details>
@@ -462,7 +482,11 @@ const STATUS_NAME = {expired:'期限切れ',urgent:'2日以内',soon:'5日以内
 
 // ---------- トースト ----------
 let toastTimer;
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1800); }
+function toast(msg, action){
+  const t=$('#toast'); t.textContent=msg; t.classList.remove('action');
+  if(action){ const b=document.createElement('button'); b.textContent=action.label; b.onclick=()=>{ t.classList.remove('show','action'); action.fn(); }; t.appendChild(b); t.classList.add('action'); }
+  t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show','action'), action? 6000 : 1800);
+}
 
 // ---------- タブ ----------
 function showTab(name){
@@ -530,31 +554,72 @@ function renderList(){
         <div class="name">${esc(i.name)} <span style="font-weight:400;font-size:13px;color:var(--sub)">${i.qty}${esc(i.unit)}</span>${i.staple?' <span class="chip tag" style="font-size:10px;padding:1px 6px">常備</span>':''}</div>
         <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ ${esc(i.loc)} ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
         <div class="actions">
-          <button class="sm" data-act="dec">−1</button>
-          <button class="sm primary" data-act="used">使い切った</button>
-          <button class="sm danger" data-act="waste">捨てた</button>
+          <button class="sm primary" data-act="dec">減らす</button>
           <button class="sm" data-act="shop">買い足す</button>
           <button class="sm" data-act="edit">編集</button>
+          <button class="sm" data-act="more" style="margin-left:auto">使い切った・捨てた…</button>
         </div>
+        ${renderPanel(i)}
       </div></div>`;
   }).join('');
+}
+// 開いている操作パネル {id, kind:'dec'|'more'}
+let openPanel = null;
+const WEIGHT_UNITS = ['g','ml','cc','kg','l','L','グラム'];
+function isWeight(u){ return WEIGHT_UNITS.includes((u||'').trim()); }
+function decSteps(item){
+  const q=item.qty;
+  if(isWeight(item.unit)){ if(q>300) return [50,100,200]; if(q>100) return [25,50,100]; return [10,20,50]; }
+  if(q>=4) return [1,2,3]; if(q>=2) return [1,2]; return [1];
+}
+function fmtQty(n){ return (+n.toFixed(2)).toString(); }
+function renderPanel(i){
+  if(!openPanel || openPanel.id!==i.id) return '';
+  if(openPanel.kind==='dec'){
+    const steps=decSteps(i).filter(s=>s<i.qty);
+    return `<div class="panel">
+      <div class="hint">残り <b>${fmtQty(i.qty)}${esc(i.unit)}</b>。使った分を押してください。</div>
+      <div class="btns">${steps.map(s=>`<button class="sm" data-act="sub" data-n="${s}">−${s}${esc(i.unit)}</button>`).join('')}<button class="sm" data-act="half">半分使った</button><button class="sm primary" data-act="zero">全部使った（0にする）</button></div>
+      <div class="inp"><span class="hint" style="margin:0">残りを直接入力:</span><input type="number" min="0" step="any" value="${fmtQty(i.qty)}" data-role="rest"><span>${esc(i.unit)}</span><button class="sm" data-act="setrest">決定</button><button class="sm" data-act="close" style="margin-left:auto">閉じる</button></div>
+    </div>`;
+  }
+  return `<div class="panel danger">
+    <div class="hint">「${esc(i.name)}」を一覧から消します。押したあと6秒間は「元に戻す」ができます。</div>
+    <div class="btns"><button class="sm primary" data-act="used">使い切った</button><button class="sm danger" data-act="waste">捨てた（廃棄）</button><button class="sm" data-act="close">キャンセル</button></div>
+  </div>`;
 }
 $('#itemList').onclick = e=>{
   const b=e.target.closest('button'); const card=e.target.closest('.item'); if(!b||!card) return;
   const id=card.dataset.id; const item=state.items.find(i=>i.id===id); if(!item) return;
   const act=b.dataset.act;
-  if(act==='dec'){ item.qty=Math.max(0, +(item.qty-1).toFixed(2)); touch(item); if(item.qty<=0){ finish(item,'used'); toast(`${item.name} を使い切りました`); } else { save(); renderAll(); } }
-  else if(act==='used'){ finish(item,'used'); toast(`${item.name} を使い切りました`); }
-  else if(act==='waste'){ if(confirm(`${item.name} を廃棄として記録しますか？`)){ finish(item,'waste'); toast(`${item.name} を廃棄として記録`); } }
+  const setQty=(q)=>{ q=Math.max(0, +(+q).toFixed(2)); if(q<=0){ finish(item,'used'); return; } item.qty=q; touch(item); save(); renderAll(); toast(`${item.name} 残り ${fmtQty(q)}${item.unit}`); };
+  if(act==='dec'||act==='more'){ openPanel = (openPanel && openPanel.id===id && openPanel.kind===act)? null : {id, kind:act}; renderList(); }
+  else if(act==='close'){ openPanel=null; renderList(); }
+  else if(act==='sub'){ setQty(item.qty - +b.dataset.n); }
+  else if(act==='half'){ setQty(item.qty/2); }
+  else if(act==='zero'){ finish(item,'used'); }
+  else if(act==='setrest'){ const v=card.querySelector('input[data-role=rest]').value; if(v==='') return; setQty(v); }
+  else if(act==='used'){ finish(item,'used'); }
+  else if(act==='waste'){ finish(item,'waste'); }
   else if(act==='shop'){ addShop(item.name); toast(`買い物リストに ${item.name} を追加`); }
   else if(act==='edit'){ editItem(item); }
 };
 function finish(item, type){
+  openPanel=null;
+  const hist={id:uid(), name:item.name, cat:item.cat, type, date:todayStr(), exp:item.exp||null};
   state.items = state.items.filter(i=>i.id!==item.id); tomb(item.id);
-  state.history.unshift({id:uid(), name:item.name, cat:item.cat, type, date:todayStr(), exp:item.exp||null});
+  state.history.unshift(hist);
   state.history = state.history.slice(0,300);
-  if(item.staple){ if(!state.staples.includes(item.name)) state.staples.push(item.name); addShop(item.name, true); }
+  let shopEntry=null;
+  if(item.staple){ if(!state.staples.includes(item.name)) state.staples.push(item.name); shopEntry=addShop(item.name, true); }
   save(); renderAll();
+  toast(type==='waste'? `${item.name} を廃棄として記録しました` : `${item.name} を使い切りました`, {label:'元に戻す', fn:()=>{
+    state.tombstones=(state.tombstones||[]).filter(t=>t.id!==item.id);
+    item.qty = item.qty>0? item.qty : 1; touch(item); state.items.push(item);
+    state.history=state.history.filter(h=>h.id!==hist.id);
+    if(shopEntry){ state.shopping=state.shopping.filter(s=>s.id!==shopEntry.id); tomb(shopEntry.id); }
+    save(); renderAll(); toast(`${item.name} を戻しました`);
+  }});
 }
 
 // ---------- 追加・編集 ----------
@@ -563,13 +628,23 @@ function fillSelects(){
   $('#f-loc').innerHTML = LOCS.map(c=>`<option>${c}</option>`).join('');
   $('#nameList').innerHTML = PRESETS.map(p=>`<option value="${p[0]}">`).join('');
 }
-let presetCat = CATS[0];
+const CAT_EMOJI = {'野菜':'🥬','肉':'🥩','魚':'🐟','乳製品・卵':'🥚','大豆・加工品':'🫘','主食・パン':'🍞','調味料':'🧂','飲み物':'🥤','その他':'📦'};
+const EMOJI = {牛乳:'🥛',卵:'🥚',ヨーグルト:'🥣',チーズ:'🧀',バター:'🧈',豆腐:'🍮',納豆:'🫘',ウインナー:'🌭',ベーコン:'🥓',ハム:'🍖',油揚げ:'🟫',鶏もも肉:'🍗',鶏むね肉:'🍗',豚こま肉:'🐖',豚バラ肉:'🥓',牛こま肉:'🐄',ひき肉:'🥩',鮭:'🐟',さば:'🐟',しらす:'🐟',キャベツ:'🥬',玉ねぎ:'🧅',にんじん:'🥕',じゃがいも:'🥔',もやし:'🌱',トマト:'🍅',きゅうり:'🥒',ほうれん草:'🥬',長ねぎ:'🌿',ピーマン:'🫑',大根:'🥕',レタス:'🥬',白菜:'🥬',なす:'🍆',きのこ:'🍄',バナナ:'🍌',食パン:'🍞',うどん:'🍜',焼きそば麺:'🍜','ごはん(冷凍)':'🍚',パスタ:'🍝',味噌:'🥣',マヨネーズ:'🧴',ケチャップ:'🍅',めんつゆ:'🍶',ポン酢:'🍋',麦茶:'🍵',ジュース:'🧃'};
+let presetQ = '';
 function renderPresets(){
-  $('#presetCats').innerHTML = CATS.filter(c=>PRESETS.some(p=>p[1]===c)).map(c=>`<span class="chip ${c===presetCat?'on':''}" data-c="${c}">${c}</span>`).join('');
-  $('#presets').innerHTML = PRESETS.filter(p=>p[1]===presetCat).map(p=>`<span class="chip" data-p="${p[0]}">${p[0]}</span>`).join('');
+  const cats = CATS.filter(c=>PRESETS.some(p=>p[1]===c));
+  $('#presetCats').innerHTML = cats.map(c=>`<span class="chip" data-c="${c}">${CAT_EMOJI[c]||''} ${c}</span>`).join('');
+  const q = presetQ.trim();
+  const html = cats.map(c=>{
+    const list = PRESETS.filter(p=>p[1]===c && (!q || p[0].includes(q)));
+    if(!list.length) return '';
+    return `<div class="pgroup" data-cat="${c}"><div class="ptitle">${CAT_EMOJI[c]||''} ${c}</div><div class="pgrid">${list.map(p=>`<button type="button" class="pchip" data-p="${esc(p[0])}"><span class="em">${EMOJI[p[0]]||CAT_EMOJI[c]||'🍽️'}</span><span>${esc(p[0])}</span></button>`).join('')}</div></div>`;
+  }).join('');
+  $('#presets').innerHTML = html || `<div class="empty">「${esc(q)}」に当てはまるものがありません。下の入力欄に直接書いてください。</div>`;
 }
-$('#presetCats').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ presetCat=c.dataset.c; renderPresets(); } };
-$('#presets').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; applyPreset(c.dataset.p); toast(`${c.dataset.p} を入力しました。期限を確認して「冷蔵庫に入れる」`); };
+$('#presetSearch').oninput = e=>{ presetQ=e.target.value; renderPresets(); };
+$('#presetCats').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; presetQ=''; $('#presetSearch').value=''; renderPresets(); const g=document.querySelector(`.pgroup[data-cat="${c.dataset.c}"]`); if(g) g.scrollIntoView({behavior:'smooth', block:'start'}); };
+$('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return; applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「冷蔵庫に入れる」`); };
 function applyPreset(name){
   const p = PRESETS.find(x=>x[0]===name); if(!p) return;
   $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
@@ -660,7 +735,7 @@ $('#aiPrompt').onclick = async ()=>{
 };
 
 // ---------- 買い物 ----------
-function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !s.done)) return; state.shopping.push(touch({id:uid(), name, done:false, auto})); save(); renderShop(); }
+function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !s.done)) return null; const entry=touch({id:uid(), name, done:false, auto}); state.shopping.push(entry); save(); renderShop(); return entry; }
 $('#shopForm').onsubmit = e=>{ e.preventDefault(); const n=$('#shopName').value.trim(); if(n){ addShop(n); $('#shopName').value=''; } };
 function renderShop(){
   $('#shopList').innerHTML = state.shopping.length? state.shopping.map(s=>`<div class="shop ${s.done?'done':''}" data-id="${s.id}"><input type="checkbox" ${s.done?'checked':''}><span class="n">${esc(s.name)}${s.auto?' <span class="hint" style="display:inline">(常備品)</span>':''}</span><button class="sm" data-act="del">✕</button></div>`).join('') : '<div class="empty">買い物リストは空です</div>';
@@ -813,7 +888,8 @@ function mergeStates(local, remote){
   const dead=new Map(); [...local.tombstones, ...remote.tombstones].forEach(t=>{ if(!dead.has(t.id)||dead.get(t.id)<t.t) dead.set(t.id,t.t); });
   const byId=arr=>{ const m=new Map(); arr.forEach(x=>{ if(x&&x.id) m.set(x.id,x); }); return m; };
   const newer=(a,b)=>((a.mtime||0)>=(b.mtime||0)? a : b);
-  const mergeList=(la,ra,pick)=>{ const l=byId(la), r=byId(ra), out=[]; new Set([...l.keys(),...r.keys()]).forEach(id=>{ if(dead.has(id)) return; const a=l.get(id), b=r.get(id); out.push(a&&b? pick(a,b) : (a||b)); }); return out; };
+  // 削除記録より後に変更(mtime)されたものは「元に戻す」で復活したとみなして残す
+  const mergeList=(la,ra,pick)=>{ const l=byId(la), r=byId(ra), out=[]; new Set([...l.keys(),...r.keys()]).forEach(id=>{ const a=l.get(id), b=r.get(id); if(dead.has(id) && ![a,b].some(x=>x && (x.mtime||0)>dead.get(id))) return; out.push(a&&b? pick(a,b) : (a||b)); }); return out; };
   return {
     items: mergeList(local.items, remote.items, newer),
     history: mergeList(local.history, remote.history, a=>a).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,300),
