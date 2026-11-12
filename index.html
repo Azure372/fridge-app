@@ -118,10 +118,10 @@
   .panel.danger .btns button{flex:1;min-width:120px;padding:12px}
   .pgroup{margin-top:12px}
   .ptitle{font-weight:700;font-size:14px;margin:0 0 6px}
-  .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-  .pchip{display:flex;align-items:center;gap:6px;padding:9px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14px;cursor:pointer;text-align:left;color:var(--text);min-width:0}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
+  .pchip{display:flex;align-items:center;gap:6px;padding:9px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14px;cursor:pointer;text-align:left;color:var(--text);min-width:0;line-height:1.3}
   .pchip .em{font-size:18px;flex:0 0 auto}
-  .pchip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pchip span:last-child{word-break:break-all}
   .pchip:active{background:var(--accent-bg);border-color:var(--accent)}
   .jump{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-top:8px}
   .jump .chip{flex:0 0 auto}
