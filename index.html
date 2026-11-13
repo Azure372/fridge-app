@@ -116,6 +116,10 @@
   .panel .inp{display:flex;gap:6px;align-items:center;margin-top:8px}
   .panel .inp input{width:90px;padding:8px}
   .panel.danger .btns button{flex:1;min-width:120px;padding:12px}
+  .seg{display:flex;background:#e5e7eb;border-radius:10px;padding:3px;margin-bottom:8px}
+  .seg button{flex:1;border:0;background:none;padding:9px 4px;border-radius:8px;font-size:14px;color:var(--sub);cursor:pointer}
+  .seg button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .loctag{font-size:11px;padding:1px 6px;border-radius:6px;background:var(--none-bg);color:var(--sub)}
   .pgroup{margin-top:12px}
   .ptitle{font-weight:700;font-size:14px;margin:0 0 6px}
   .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
@@ -152,7 +156,12 @@
 
 <!-- 一覧 -->
 <section id="tab-list" class="active">
-  <input type="search" id="search" placeholder="食材名で検索" style="margin-bottom:8px">
+  <div class="seg" id="groupSeg">
+    <button data-g="all" class="on">すべて</button>
+    <button data-g="fridge">🧊 冷蔵庫</button>
+    <button data-g="stock">🗄️ ストック</button>
+  </div>
+  <input type="search" id="search" placeholder="名前で検索" style="margin-bottom:8px">
   <div class="filters" id="filters"></div>
   <div id="itemList"></div>
 </section>
@@ -233,8 +242,13 @@
     </div>
   </div>
   <div class="card">
+    <h2>残りわずかのストック</h2>
+    <div class="hint">冷蔵庫以外の在庫（調味料・お菓子・日用品など）で、残りが1以下のものです。</div>
+    <div id="lowStock"></div>
+  </div>
+  <div class="card">
     <h2>切れている常備品</h2>
-    <div class="hint">常備品に設定したもので、今冷蔵庫にないものです。</div>
+    <div class="hint">常備品に設定したもので、今家にないものです。</div>
     <div id="stapleList"></div>
   </div>
 </section>
@@ -316,6 +330,15 @@
         <li><b>レシピ</b>タブで、期限が近い食材を使う料理を見る。</li>
       </ol>
       <p>データはこの端末のブラウザ内に保存されます。家族や別の端末と同じ冷蔵庫を見たいときは「家族と共有する」を見てください。</p>
+    </details>
+    <details>
+      <summary>冷蔵庫以外の在庫（ストック）</summary>
+      <p>調味料・お菓子・飲み物の買い置き・日用品など、冷蔵庫に入っていないものも同じように登録できます。保存場所を「常温」「お菓子」「日用品」にすると<b>ストック</b>として扱われ、一覧の上の「🗄️ ストック」で冷蔵庫の中身と分けて見られます。</p>
+      <ul>
+        <li>追加タブには「調味料」「お菓子」「飲み物」「日用品」の定番が入っています。期限がないもの（砂糖・ラップなど）は期限なしで登録されます。</li>
+        <li>使ったら「減らす」で本数や袋数を減らします。残りが1以下になると、買い物タブの「残りわずかのストック」に出るので、タップで買い物リストに入れられます。</li>
+        <li>いつも切らしたくないものは「常備品」にすると、使い切ったときに自動で買い物リストに入ります。</li>
+      </ul>
     </details>
     <details>
       <summary>ホーム画面に追加する（スマホ）</summary>
@@ -420,10 +443,13 @@
 
 <script>
 // ---------- 定数 ----------
-const CATS = ['作った料理','野菜','肉','魚','乳製品・卵','大豆・加工品','主食・パン','調味料','飲み物','その他'];
+const CATS = ['作った料理','野菜','肉','魚','乳製品・卵','大豆・加工品','主食・パン','調味料','お菓子','飲み物','日用品','その他'];
 const COOKED = '作った料理';
 const isCooked = it => it && it.cat===COOKED;
-const LOCS = ['冷蔵','冷凍','野菜室','常温'];
+const LOCS = ['冷蔵','冷凍','野菜室','常温','お菓子','日用品'];
+const FRIDGE_LOCS = ['冷蔵','冷凍','野菜室'];
+const groupOf = it => FRIDGE_LOCS.includes(it.loc) ? 'fridge' : 'stock';
+const GROUP_NAME = {fridge:'冷蔵庫', stock:'ストック'};
 // よく買うもの: [名前, 分類, 目安日数, 単位, 保存場所]
 const PRESETS = [
   ['牛乳','乳製品・卵',7,'本','冷蔵'],['卵','乳製品・卵',14,'個','冷蔵'],['ヨーグルト','乳製品・卵',10,'個','冷蔵'],['チーズ','乳製品・卵',20,'袋','冷蔵'],['バター','乳製品・卵',60,'個','冷蔵'],
@@ -433,7 +459,11 @@ const PRESETS = [
   ['キャベツ','野菜',10,'玉','野菜室'],['玉ねぎ','野菜',30,'個','常温'],['にんじん','野菜',14,'本','野菜室'],['じゃがいも','野菜',30,'個','常温'],['もやし','野菜',2,'袋','冷蔵'],['トマト','野菜',7,'個','野菜室'],['きゅうり','野菜',5,'本','野菜室'],['ほうれん草','野菜',3,'袋','野菜室'],['長ねぎ','野菜',7,'本','野菜室'],['ピーマン','野菜',7,'袋','野菜室'],['大根','野菜',10,'本','野菜室'],['レタス','野菜',5,'玉','野菜室'],['白菜','野菜',14,'個','野菜室'],['なす','野菜',5,'本','野菜室'],['きのこ','野菜',5,'パック','野菜室'],['バナナ','野菜',4,'本','常温'],
   ['食パン','主食・パン',4,'袋','常温'],['うどん','主食・パン',5,'玉','冷蔵'],['焼きそば麺','主食・パン',5,'玉','冷蔵'],['ごはん(冷凍)','主食・パン',30,'個','冷凍'],['パスタ','主食・パン',365,'袋','常温'],
   ['味噌','調味料',180,'個','冷蔵'],['マヨネーズ','調味料',30,'本','冷蔵'],['ケチャップ','調味料',30,'本','冷蔵'],['めんつゆ','調味料',30,'本','冷蔵'],['ポン酢','調味料',60,'本','冷蔵'],
-  ['麦茶','飲み物',3,'本','冷蔵'],['ジュース','飲み物',7,'本','冷蔵'],
+  ['しょうゆ','調味料',365,'本','常温'],['みりん','調味料',365,'本','常温'],['料理酒','調味料',365,'本','常温'],['砂糖','調味料',null,'袋','常温'],['塩','調味料',null,'袋','常温'],['サラダ油','調味料',365,'本','常温'],['ごま油','調味料',365,'本','常温'],['酢','調味料',365,'本','常温'],['カレールウ','調味料',365,'箱','常温'],['コンソメ','調味料',365,'箱','常温'],['だしの素','調味料',365,'袋','常温'],['小麦粉','調味料',180,'袋','常温'],['片栗粉','調味料',365,'袋','常温'],
+  ['米','主食・パン',null,'kg','常温'],['カップ麺','主食・パン',150,'個','常温'],['レトルトカレー','主食・パン',365,'個','常温'],['缶詰','主食・パン',730,'個','常温'],['シリアル','主食・パン',120,'袋','常温'],
+  ['ポテトチップス','お菓子',120,'袋','お菓子'],['チョコレート','お菓子',180,'個','お菓子'],['クッキー','お菓子',120,'袋','お菓子'],['せんべい','お菓子',120,'袋','お菓子'],['グミ','お菓子',180,'袋','お菓子'],['アイス','お菓子',null,'個','冷凍'],['プリン','お菓子',7,'個','冷蔵'],
+  ['麦茶','飲み物',3,'本','冷蔵'],['ジュース','飲み物',7,'本','冷蔵'],['水（ペットボトル）','飲み物',365,'本','常温'],['炭酸水','飲み物',180,'本','常温'],['お茶（ペットボトル）','飲み物',180,'本','常温'],['コーヒー','飲み物',180,'袋','常温'],['ビール','飲み物',180,'本','冷蔵'],
+  ['ラップ','日用品',null,'本','日用品'],['キッチンペーパー','日用品',null,'個','日用品'],['ティッシュ','日用品',null,'箱','日用品'],['トイレットペーパー','日用品',null,'個','日用品'],['食器用洗剤','日用品',null,'本','日用品'],['ゴミ袋','日用品',null,'袋','日用品'],['アルミホイル','日用品',null,'本','日用品'],['ジップ袋','日用品',null,'箱','日用品'],
 ];
 // レシピ: 材料は [表示名, 一致キーワード配列]
 const RECIPES = [
@@ -522,17 +552,23 @@ $('#search').oninput = e=>{ search=e.target.value.trim(); renderList(); };
 function renderSummary(){
   const c = {expired:0,urgent:0,soon:0,ok:0,none:0};
   state.items.forEach(i=>c[statusOf(i)]++);
-  $('#summary').innerHTML = `<span class="pill none">全${state.items.length}品</span>` +
+  const nf = state.items.filter(i=>groupOf(i)==='fridge').length, ns = state.items.length - nf;
+  $('#summary').innerHTML = `<span class="pill none">🧊 ${nf}品 ・ 🗄️ ${ns}品</span>` +
     ['expired','urgent','soon'].filter(k=>c[k]).map(k=>`<span class="pill ${k}">${STATUS_NAME[k]} ${c[k]}</span>`).join('');
   const alert = c.expired + c.urgent;
   const nb = document.querySelector('nav button[data-tab="list"]');
   nb.innerHTML = '一覧' + (alert? `<span class="badge">${alert}</span>`:'');
 }
+let group = 'all';
 function renderFilters(){
-  const fs = [['all','すべて'],['alert','期限切れ・近い'],...LOCS.map(l=>[l,l]),...CATS.map(c=>[c,c])];
+  const locs = group==='fridge'? FRIDGE_LOCS : group==='stock'? LOCS.filter(l=>!FRIDGE_LOCS.includes(l)) : [];
+  const present = new Set(state.items.filter(i=>group==='all'||groupOf(i)===group).map(i=>i.cat));
+  const fs = [['all','すべて'],['alert','期限切れ・近い'],...locs.map(l=>[l,'📍'+l]),...CATS.filter(c=>present.has(c)).map(c=>[c,(CAT_EMOJI[c]||'')+c])];
   $('#filters').innerHTML = fs.map(([k,v])=>`<span class="chip ${filter===k?'on':''}" data-f="${k}">${v}</span>`).join('');
+  document.querySelectorAll('#groupSeg button').forEach(b=>b.classList.toggle('on', b.dataset.g===group));
 }
 $('#filters').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; filter=c.dataset.f; renderList(); };
+$('#groupSeg').onclick = e=>{ const b=e.target.closest('button'); if(!b) return; group=b.dataset.g; if(LOCS.includes(filter)) filter='all'; renderList(); };
 function renderList(){
   renderFilters();
   const order = {expired:0,urgent:1,soon:2,ok:3,none:4};
@@ -541,12 +577,13 @@ function renderList(){
     if(sa!==sb) return order[sa]-order[sb];
     return (a.exp||'9999')<(b.exp||'9999')?-1:1;
   });
+  if(group!=='all') items=items.filter(i=>groupOf(i)===group);
   if(filter==='alert') items=items.filter(i=>['expired','urgent'].includes(statusOf(i)));
   else if(LOCS.includes(filter)) items=items.filter(i=>i.loc===filter);
   else if(CATS.includes(filter)) items=items.filter(i=>i.cat===filter);
   if(search) items=items.filter(i=>i.name.includes(search));
   if(!items.length){
-    if(state.items.length){ $('#itemList').innerHTML = '<div class="empty">該当する食材はありません</div>'; return; }
+    if(state.items.length){ $('#itemList').innerHTML = `<div class="empty">${group==='stock'?'ストックはまだありません。<br>追加タブで「お菓子」「調味料」「日用品」などを登録すると、ここにまとまります。':'該当するものはありません'}</div>`; return; }
     $('#itemList').innerHTML = `<div class="welcome">
       <h2>🧊 ようこそ！冷蔵庫管理の始め方</h2>
       <ol>
@@ -570,7 +607,7 @@ function renderList(){
     return `<div class="card item ${st}" data-id="${i.id}">
       <div class="body">
         <div class="name">${isCooked(i)?'🍲 ':''}${esc(i.name)} <span style="font-weight:400;font-size:13px;color:var(--sub)">${fmtQty(i.qty)}${esc(i.unit)}</span>${i.staple?' <span class="chip tag" style="font-size:10px;padding:1px 6px">常備</span>':''}</div>
-        <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ ${esc(i.loc)} ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
+        <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ <span class="loctag">${groupOf(i)==='fridge'?'🧊':'🗄️'} ${esc(i.loc)}</span> ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
         <div class="actions">
           <button class="sm primary" data-act="dec">${isCooked(i)?'食べた':'減らす'}</button>
           <button class="sm" data-act="shop">買い足す</button>
@@ -646,8 +683,8 @@ function fillSelects(){
   $('#f-loc').innerHTML = LOCS.map(c=>`<option>${c}</option>`).join('');
   $('#nameList').innerHTML = PRESETS.map(p=>`<option value="${p[0]}">`).join('');
 }
-const CAT_EMOJI = {'作った料理':'🍲','野菜':'🥬','肉':'🥩','魚':'🐟','乳製品・卵':'🥚','大豆・加工品':'🫘','主食・パン':'🍞','調味料':'🧂','飲み物':'🥤','その他':'📦'};
-const EMOJI = {牛乳:'🥛',卵:'🥚',ヨーグルト:'🥣',チーズ:'🧀',バター:'🧈',豆腐:'🍮',納豆:'🫘',ウインナー:'🌭',ベーコン:'🥓',ハム:'🍖',油揚げ:'🟫',鶏もも肉:'🍗',鶏むね肉:'🍗',豚こま肉:'🐖',豚バラ肉:'🥓',牛こま肉:'🐄',ひき肉:'🥩',鮭:'🐟',さば:'🐟',しらす:'🐟',キャベツ:'🥬',玉ねぎ:'🧅',にんじん:'🥕',じゃがいも:'🥔',もやし:'🌱',トマト:'🍅',きゅうり:'🥒',ほうれん草:'🥬',長ねぎ:'🌿',ピーマン:'🫑',大根:'🥕',レタス:'🥬',白菜:'🥬',なす:'🍆',きのこ:'🍄',バナナ:'🍌',食パン:'🍞',うどん:'🍜',焼きそば麺:'🍜','ごはん(冷凍)':'🍚',パスタ:'🍝',味噌:'🥣',マヨネーズ:'🧴',ケチャップ:'🍅',めんつゆ:'🍶',ポン酢:'🍋',麦茶:'🍵',ジュース:'🧃'};
+const CAT_EMOJI = {'作った料理':'🍲','お菓子':'🍪','日用品':'🧻','野菜':'🥬','肉':'🥩','魚':'🐟','乳製品・卵':'🥚','大豆・加工品':'🫘','主食・パン':'🍞','調味料':'🧂','飲み物':'🥤','その他':'📦'};
+const EMOJI = {牛乳:'🥛',卵:'🥚',ヨーグルト:'🥣',チーズ:'🧀',バター:'🧈',豆腐:'🍮',納豆:'🫘',ウインナー:'🌭',ベーコン:'🥓',ハム:'🍖',油揚げ:'🟫',鶏もも肉:'🍗',鶏むね肉:'🍗',豚こま肉:'🐖',豚バラ肉:'🥓',牛こま肉:'🐄',ひき肉:'🥩',鮭:'🐟',さば:'🐟',しらす:'🐟',キャベツ:'🥬',玉ねぎ:'🧅',にんじん:'🥕',じゃがいも:'🥔',もやし:'🌱',トマト:'🍅',きゅうり:'🥒',ほうれん草:'🥬',長ねぎ:'🌿',ピーマン:'🫑',大根:'🥕',レタス:'🥬',白菜:'🥬',なす:'🍆',きのこ:'🍄',バナナ:'🍌',食パン:'🍞',うどん:'🍜',焼きそば麺:'🍜','ごはん(冷凍)':'🍚',パスタ:'🍝',味噌:'🥣',マヨネーズ:'🧴',ケチャップ:'🍅',めんつゆ:'🍶',ポン酢:'🍋',麦茶:'🍵',ジュース:'🧃',しょうゆ:'🫙',みりん:'🍶',料理酒:'🍶',砂糖:'🍬',塩:'🧂',サラダ油:'🫗',ごま油:'🫗',酢:'🫙',カレールウ:'🍛',コンソメ:'🧊',だしの素:'🐟',小麦粉:'🌾',片栗粉:'🌾',米:'🍚',カップ麺:'🍜',レトルトカレー:'🍛',缶詰:'🥫',シリアル:'🥣',ポテトチップス:'🍟',チョコレート:'🍫',クッキー:'🍪',せんべい:'🍘',グミ:'🍬',アイス:'🍦',プリン:'🍮','水（ペットボトル）':'💧',炭酸水:'🫧','お茶（ペットボトル）':'🍵',コーヒー:'☕',ビール:'🍺',ラップ:'🎞️',キッチンペーパー:'🧻',ティッシュ:'🧻',トイレットペーパー:'🧻',食器用洗剤:'🧴',ゴミ袋:'🗑️',アルミホイル:'🎞️',ジップ袋:'👝'};
 let presetQ = '';
 function renderPresets(){
   const cats = CATS.filter(c=>PRESETS.some(p=>p[1]===c));
@@ -669,8 +706,8 @@ $('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return;
   applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「冷蔵庫に入れる」`); };
 function applyPreset(name){
   const p = PRESETS.find(x=>x[0]===name); if(!p) return;
-  $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
-  $('#expHint').textContent=`（目安: ${p[2]}日）`;
+  $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=p[2]==null? '' : addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
+  $('#expHint').textContent= p[2]==null? '（期限なし。あれば入力）' : `（目安: ${p[2]}日）`;
   $('#f-staple').checked = state.staples.includes(p[0]);
 }
 $('#f-name').addEventListener('change', e=>{
@@ -816,7 +853,10 @@ function renderShop(){
   const inShop = new Set(state.shopping.filter(s=>!s.done).map(s=>s.name));
   const out = state.staples.filter(s=>!inFridge.has(s) && !inShop.has(s));
   $('#stapleList').innerHTML = out.length? `<div class="chips" style="margin-top:6px">${out.map(s=>`<span class="chip" data-s="${esc(s)}">＋ ${esc(s)}</span>`).join('')}</div>` : '<div class="hint">切れている常備品はありません</div>';
+  const low = state.items.filter(i=>groupOf(i)==='stock' && !isCooked(i) && i.qty<=1 && !inShop.has(i.name) && (!i.exp || daysLeft(i.exp)>14));
+  $('#lowStock').innerHTML = low.length? `<div class="chips" style="margin-top:6px">${low.map(i=>`<span class="chip" data-s="${esc(i.name)}">＋ ${esc(i.name)}（残り${fmtQty(i.qty)}${esc(i.unit)}）</span>`).join('')}</div>` : '<div class="hint">残りわずかのストックはありません</div>';
 }
+$('#lowStock').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s); toast('買い物リストに追加'); } };
 $('#shopList').onclick = e=>{
   const row=e.target.closest('.shop'); if(!row) return; const s=state.shopping.find(x=>x.id===row.dataset.id);
   if(e.target.matches('input')){ s.done=e.target.checked; touch(s); save(); renderShop(); }
@@ -861,6 +901,7 @@ function loadSample(silent){
   add('牛乳',1); add('卵',6,8); add('豆腐',-1); add('鶏もも肉',0,300,'g'); add('キャベツ',4,0.5,'玉'); add('玉ねぎ',20,3); add('にんじん',9,2); add('じゃがいも',25,4); add('もやし',1); add('長ねぎ',3); add('ごはん(冷凍)',30,3); add('味噌',150); add('ヨーグルト',2); add('食パン',2); add('ウインナー',5);
   ['牛乳','卵'].forEach(s=>{ if(!state.staples.includes(s)) state.staples.push(s); });
   state.items.push({id:uid(),name:'カレー',cat:COOKED,loc:'冷蔵',qty:2,unit:'食分',exp:addDays(2),memo:`${todayStr().slice(5).replace('-','/')}に作った`,made:todayStr(),staple:false,added:todayStr()});
+  add('しょうゆ',200); add('砂糖',null); add('ポテトチップス',60,2); add('チョコレート',90); add('カップ麺',100,3); add('ティッシュ',null,1,'箱'); add('食器用洗剤',null,1);
   recordCooked('カレー'); recordCooked('肉じゃが');
   state.history.unshift({id:uid(),name:'ほうれん草',cat:'野菜',type:'waste',date:todayStr(),exp:null},{id:uid(),name:'牛乳',cat:'乳製品・卵',type:'used',date:todayStr(),exp:null},{id:uid(),name:'納豆',cat:'大豆・加工品',type:'used',date:todayStr(),exp:null});
   save(); renderAll(); if(!silent){ showTab('list'); toast('サンプルを追加しました'); }
@@ -1034,6 +1075,7 @@ if(qs.get('demo')==='1'){
   if(!state.items.length) loadSample(true);
   if(!state.shopping.length){ addShop('チーズ'); addShop('ひき肉'); }
   if(qs.get('preset')) applyPreset(qs.get('preset'));
+  if(qs.get('group')){ group=qs.get('group'); }
   if(qs.get('tab')) showTab(qs.get('tab'));
   if(qs.get('open')) document.querySelectorAll('.help details').forEach((d,i)=>d.open = (i===+qs.get('open')));
 }

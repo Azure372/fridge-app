@@ -1,5 +1,5 @@
 // 冷蔵庫管理 Service Worker: オフラインでも開けるようにファイルをキャッシュする
-const CACHE = 'fridge-v9';
+const CACHE = 'fridge-v11';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
