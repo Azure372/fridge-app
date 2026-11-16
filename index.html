@@ -153,6 +153,7 @@
 </div>
 <main>
 <div id="installBanner"></div>
+<div id="resumeBanner" class="welcome" style="display:none;font-size:14px;line-height:1.8"></div>
 
 <!-- 一覧 -->
 <section id="tab-list" class="active">
@@ -169,8 +170,10 @@
 <!-- 追加 -->
 <section id="tab-add">
   <div class="card">
-    <h2>よく買うものから追加（タップで入力欄に反映）</h2>
-    <input type="search" id="presetSearch" placeholder="食材名で絞り込み（例：にんじん）">
+    <h2>食材・ストックを追加</h2>
+    <button type="button" class="btn secondary" id="manualAdd" style="margin-bottom:10px">✏️ 名前を入力して追加（候補にないもの）</button>
+    <div class="hint" style="margin-bottom:4px">よく買うものはタップするだけで期限の目安まで入ります。</div>
+    <input type="search" id="presetSearch" placeholder="候補を絞り込み（例：にんじん）">
     <div class="jump" id="presetCats"></div>
     <div id="presets"></div>
   </div>
@@ -178,6 +181,7 @@
     <h2 id="formTitle">食材を追加</h2>
     <form id="form">
       <input type="hidden" id="f-id">
+      <input type="hidden" id="f-shopid">
       <label>名前</label>
       <input id="f-name" required placeholder="例：牛乳" list="nameList">
       <datalist id="nameList"></datalist>
@@ -368,7 +372,7 @@
       <table>
         <tr><th>ボタン</th><th>起きること</th></tr>
         <tr><td>減らす</td><td>使った分を選ぶパネルが開く。g や ml なら −50/−100 など、個数なら −1/−2。「半分使った」や残量の直接入力もできる。0になると「使い切った」扱い</td></tr>
-        <tr><td>買い足す</td><td>買い物リストに入る（食材は残る）</td></tr>
+        <tr><td>買い物リストへ</td><td>買い物リストに入る（在庫の数は変わらない）。入れたあとは「✓ 買い物リスト済み」になる</td></tr>
         <tr><td>編集</td><td>期限や数量を直す</td></tr>
         <tr><td>使い切った・捨てた…</td><td>確認パネルが開き、「使い切った」か「捨てた（廃棄）」を選ぶ。押したあと6秒間は画面下の「元に戻す」で取り消せる</td></tr>
       </table>
@@ -398,7 +402,7 @@
     </details>
     <details>
       <summary>買い物リストと常備品</summary>
-      <p>自分で入力する、一覧の「買い足す」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを冷蔵庫に入れる」で登録します。</p>
+      <p>自分で入力する、一覧の「買い物リストへ」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを冷蔵庫に入れる」で1件ずつ登録します（「購入品の登録 1 / 3」のように進み具合が出ます）。途中で「買い物リストに戻る」を押したりアプリを閉じたりしても、まだ保存していない項目はリストに残り、次に開いたとき「続ける」から再開できます。</p>
       <p>常備品を使い切ると自動でリストに入り、「切れている常備品」にも表示されます。常備品をやめるには、一覧の「編集」でチェックを外して保存します。</p>
     </details>
     <details>
@@ -610,7 +614,7 @@ function renderList(){
         <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ <span class="loctag">${groupOf(i)==='fridge'?'🧊':'🗄️'} ${esc(i.loc)}</span> ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
         <div class="actions">
           <button class="sm primary" data-act="dec">${isCooked(i)?'食べた':'減らす'}</button>
-          <button class="sm" data-act="shop">買い足す</button>
+          ${state.shopping.some(s=>s.name===i.name && !s.done)? '<button class="sm" disabled style="opacity:.6">✓ 買い物リスト済み</button>' : '<button class="sm" data-act="shop">🛒 買い物リストへ</button>'}
           <button class="sm" data-act="edit">編集</button>
           <button class="sm" data-act="more" style="margin-left:auto">使い切った・捨てた…</button>
         </div>
@@ -656,7 +660,7 @@ $('#itemList').onclick = e=>{
   else if(act==='setrest'){ const v=card.querySelector('input[data-role=rest]').value; if(v==='') return; setQty(v); }
   else if(act==='used'){ finish(item,'used'); }
   else if(act==='waste'){ finish(item,'waste'); }
-  else if(act==='shop'){ addShop(item.name); toast(`買い物リストに ${item.name} を追加`); }
+  else if(act==='shop'){ addShop(item.name); renderList(); toast(`買い物リストに「${item.name}」を入れました（在庫はそのまま）`); }
   else if(act==='edit'){ editItem(item); }
 };
 function finish(item, type){
@@ -697,9 +701,18 @@ function renderPresets(){
     if(!list.length) return '';
     return `<div class="pgroup" data-cat="${c}"><div class="ptitle">${CAT_EMOJI[c]||''} ${c}</div><div class="pgrid">${list.map(p=>`<button type="button" class="pchip" data-p="${esc(p[0])}"><span class="em">${EMOJI[p[0]]||CAT_EMOJI[c]||'🍽️'}</span><span>${esc(p[0])}</span></button>`).join('')}</div></div>`;
   }).join('');
-  $('#presets').innerHTML = html || `<div class="empty">「${esc(q)}」に当てはまるものがありません。下の入力欄に直接書いてください。</div>`;
+  $('#presets').innerHTML = html || `<div class="empty">「${esc(q)}」に当てはまる候補はありません。<br><button type="button" class="sm primary" id="addByName" style="margin-top:8px">「${esc(q)}」をこの名前で追加する</button></div>`;
+  const ab=$('#addByName'); if(ab) ab.onclick=()=>goManualAdd(q);
 }
 $('#presetSearch').oninput = e=>{ presetQ=e.target.value; renderPresets(); };
+function goManualAdd(name){
+  if($('#f-shopid').value || $('#f-id').value){ /* 登録中・編集中はフォームをそのまま使う */ } else resetForm();
+  if(name) $('#f-name').value=name;
+  $('#form').scrollIntoView({behavior:'smooth', block:'start'});
+  const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash');
+  setTimeout(()=>n.focus(), 350);
+}
+$('#manualAdd').onclick = ()=>goManualAdd('');
 $('#presetCats').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; presetQ=''; $('#presetSearch').value=''; renderPresets(); const g=document.querySelector(`.pgroup[data-cat="${c.dataset.c}"]`); if(g) g.scrollIntoView({behavior:'smooth', block:'start'}); };
 $('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return;
   if(c.dataset.leftover!==undefined){ offerLeftover(c.dataset.leftover); if(!c.dataset.leftover){ $('#formTitle').textContent='🍲 作った料理の残りを登録'; $('#f-name').value=''; $('#f-name').placeholder='例：カレー'; $('#f-name').focus(); } return; }
@@ -716,7 +729,7 @@ $('#f-name').addEventListener('change', e=>{
   if(state.staples.includes(e.target.value)) $('#f-staple').checked=true;
 });
 document.querySelectorAll('#tab-add .chip[data-days]').forEach(c=>c.onclick=()=>{ $('#f-exp').value = c.dataset.days===''?'':addDays(+c.dataset.days); });
-function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
+function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
 function updateLeftoverBar(){
   const on = $('#f-cat').value===COOKED;
   $('#leftoverBar').style.display = on? 'block':'none';
@@ -864,21 +877,54 @@ $('#shopList').onclick = e=>{
 };
 $('#stapleList').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s, true); toast('買い物リストに追加'); } };
 $('#shopClear').onclick = ()=>{ state.shopping.filter(s=>s.done).forEach(s=>tomb(s.id)); state.shopping=state.shopping.filter(s=>!s.done); save(); renderShop(); };
-let fridgeQueue=[];
+// 購入品の登録キュー: 買い物項目は「冷蔵庫に保存できた時点」で初めて消す。途中でやめても再読み込みしても残る。
+const PQ_KEY='fridge-pq-v1';
+let pq=null; try{ pq=JSON.parse(localStorage.getItem(PQ_KEY)); }catch(e){}
+function savePq(){ try{ if(pq) localStorage.setItem(PQ_KEY, JSON.stringify(pq)); else localStorage.removeItem(PQ_KEY); }catch(e){} }
+function pqPending(){ if(!pq) return []; return pq.ids.filter(id=>state.shopping.some(s=>s.id===id)); }
 $('#shopToFridge').onclick = ()=>{
-  fridgeQueue = state.shopping.filter(s=>s.done).map(s=>s.name);
-  if(!fridgeQueue.length){ toast('チェックされた項目がありません'); return; }
-  state.shopping.filter(s=>s.done).forEach(s=>tomb(s.id)); state.shopping=state.shopping.filter(s=>!s.done); save();
+  const ids = state.shopping.filter(s=>s.done).map(s=>s.id);
+  if(!ids.length){ toast('チェックされた項目がありません'); return; }
+  pq={ids, total:ids.length}; savePq();
   nextFromQueue();
 };
 function nextFromQueue(){
-  const n=fridgeQueue.shift(); if(!n){ showTab('list'); return; }
+  const pending = pqPending();
+  if(!pending.length){ const n=pq? pq.total:0; pq=null; savePq(); resetForm(); renderAll(); showTab('shop'); toast(`購入品の登録が完了しました（${n}件）`); return; }
+  const entry = state.shopping.find(s=>s.id===pending[0]);
+  const n = entry.name;
   resetForm(); showTab('add'); $('#f-name').value=n; applyPreset(n); if(state.staples.includes(n)) $('#f-staple').checked=true;
-  $('#formTitle').textContent=`買ってきたものを登録（残り ${fridgeQueue.length} 件）`;
+  $('#f-shopid').value=entry.id;
+  const doneCount = pq.total - pending.length;
+  $('#formTitle').textContent=`🛒 購入品の登録 ${doneCount+1} / ${pq.total}（未登録 ${pending.length}件）`;
+  $('#submitBtn').textContent='冷蔵庫に入れる（次へ）';
+  $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='買い物リストに戻る（あとで登録）';
+  renderResumeBanner();
+  $('#form').scrollIntoView({behavior:'smooth', block:'start'});
   toast(`${n} の期限と数量を確認してください`);
 }
+function leaveQueue(){ pq=null; savePq(); resetForm(); renderResumeBanner(); showTab('shop'); toast('買い物リストに戻りました。チェックはそのまま残っています'); }
+function renderResumeBanner(){
+  const b=$('#resumeBanner'); const pending=pqPending();
+  if(!pq || !pending.length || $('#f-shopid').value){ b.style.display='none'; return; }
+  b.style.display='block';
+  b.innerHTML=`🛒 購入品の登録が途中です（未登録 ${pending.length}件：${esc(pending.map(id=>state.shopping.find(s=>s.id===id).name).join('、'))}） <button class="sm primary" id="resumeGo">続ける</button> <button class="sm" id="resumeStop">買い物リストに戻す</button>`;
+  $('#resumeGo').onclick=()=>nextFromQueue();
+  $('#resumeStop').onclick=()=>{ pq=null; savePq(); renderResumeBanner(); toast('買い物リストに残しました'); };
+}
 const origSubmit = $('#form').onsubmit;
-$('#form').onsubmit = e=>{ origSubmit(e); if(fridgeQueue.length) nextFromQueue(); };
+$('#form').onsubmit = e=>{
+  const shopId=$('#f-shopid').value;
+  const before=state.items.length;
+  origSubmit(e);
+  if(!shopId) return;
+  if(state.items.length===before){ $('#f-shopid').value=shopId; return; } // 保存できていない（名前が空など）
+  // 保存できたので、その買い物項目だけ消す
+  state.shopping=state.shopping.filter(s=>s.id!==shopId); tomb(shopId); save();
+  if(pq){ pq.ids=pq.ids.filter(id=>id!==shopId); savePq(); }
+  nextFromQueue();
+};
+$('#cancelEdit').onclick = ()=>{ if($('#f-shopid').value){ leaveQueue(); return; } resetForm(); showTab('list'); };
 
 // ---------- 記録・統計 ----------
 function renderLog(){
@@ -1067,7 +1113,7 @@ setInterval(()=>{ if(document.visibilityState==='visible') pullNow(); }, 15000);
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') pullNow(); });
 
 // ---------- 全体 ----------
-function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderLog(); renderNotify(); renderShare(); }
+function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderLog(); renderNotify(); renderShare(); renderResumeBanner(); }
 load(); fillSelects(); resetForm(); renderAll();
 // マニュアル用スクリーンショット: ?demo=1&tab=add&preset=牛乳 で見本データと画面を指定
 const qs = new URLSearchParams(location.search);
