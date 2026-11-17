@@ -81,6 +81,11 @@
   .chips{display:flex;flex-wrap:wrap;gap:6px}
   .chip{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer}
   .chip.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+  button.chip{font-family:inherit;color:var(--text);line-height:normal}
+  button.chip.on{color:var(--accent)}
+  button:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .pc th,.pc td{padding:4px}
+  .pc input,.pc select{padding:8px}
   .chip.tag{cursor:default}
   .chip.tag.expired{background:var(--expired-bg);color:var(--expired);border-color:transparent}
   .chip.tag.urgent{background:var(--urgent-bg);color:var(--urgent);border-color:transparent}
@@ -169,7 +174,8 @@
 
 <!-- 追加 -->
 <section id="tab-add">
-  <div class="card">
+  <div class="card welcome" id="editNote" style="display:none">✏️ 編集中です。ほかの食材を追加するには「キャンセル」を押してください。</div>
+  <div class="card" id="presetCard">
     <h2>食材・ストックを追加</h2>
     <button type="button" class="btn secondary" id="manualAdd" style="margin-bottom:10px">✏️ 名前を入力して追加（候補にないもの）</button>
     <div class="hint" style="margin-bottom:4px">よく買うものはタップするだけで期限の目安まで入ります。</div>
@@ -179,7 +185,7 @@
   </div>
   <div class="card">
     <h2 id="formTitle">食材を追加</h2>
-    <form id="form">
+    <form id="form" novalidate>
       <input type="hidden" id="f-id">
       <input type="hidden" id="f-shopid">
       <label>名前</label>
@@ -191,18 +197,18 @@
       </div>
       <div id="leftoverBar" class="panel" style="display:none;margin-top:10px">
         <div class="hint">🍲 作った料理の残りです。何食分残っていますか？</div>
-        <div class="chips" id="servingChips"><span class="chip" data-serv="1">1食分</span><span class="chip" data-serv="2">2食分</span><span class="chip" data-serv="3">3食分</span><span class="chip" data-serv="4">4食分</span><span class="chip" data-serv="6">6食分</span></div>
-        <div class="chips" style="margin-top:6px" id="keepChips"><span class="chip" data-keep="冷蔵">冷蔵（目安3日）</span><span class="chip" data-keep="冷凍">冷凍（目安1か月）</span></div>
+        <div class="chips" id="servingChips"><button type="button" class="chip" data-serv="1">1食分</button><button type="button" class="chip" data-serv="2">2食分</button><button type="button" class="chip" data-serv="3">3食分</button><button type="button" class="chip" data-serv="4">4食分</button><button type="button" class="chip" data-serv="6">6食分</button></div>
+        <div class="chips" style="margin-top:6px" id="keepChips"><button type="button" class="chip" data-keep="冷蔵">冷蔵（目安3日）</button><button type="button" class="chip" data-keep="冷凍">冷凍（目安1か月）</button></div>
         <div class="hint" style="margin-top:6px">「食べた」で1食分ずつ減らせます。レシピ画面の先頭にも「先に食べるもの」として出ます。</div>
       </div>
       <div class="row">
-        <div><label>数量</label><input id="f-qty" type="number" min="0" step="0.5" value="1"></div>
+        <div><label>数量</label><input id="f-qty" type="number" min="0" step="any" inputmode="decimal" value="1"><div id="qtyErr" class="hint" style="display:none;color:var(--expired);margin-top:4px"></div></div>
         <div><label>単位</label><input id="f-unit" value="個" list="unitList"><datalist id="unitList"><option>個<option>本<option>パック<option>袋<option>g<option>ml<option>枚<option>玉<option>切れ<option>食分</datalist></div>
       </div>
       <label>賞味・消費期限 <span class="hint" style="display:inline" id="expHint"></span></label>
       <input id="f-exp" type="date">
       <div class="chips" style="margin-top:6px">
-        <span class="chip" data-days="1">明日</span><span class="chip" data-days="3">3日後</span><span class="chip" data-days="7">1週間</span><span class="chip" data-days="14">2週間</span><span class="chip" data-days="30">1か月</span><span class="chip" data-days="">期限なし</span>
+        <button type="button" class="chip" data-days="1">明日</button><button type="button" class="chip" data-days="3">3日後</button><button type="button" class="chip" data-days="7">1週間</button><button type="button" class="chip" data-days="14">2週間</button><button type="button" class="chip" data-days="30">1か月</button><button type="button" class="chip" data-days="">期限なし</button>
       </div>
       <label>メモ</label>
       <input id="f-memo" placeholder="開封済み、半分使用済み など">
@@ -220,11 +226,12 @@
 <!-- レシピ -->
 <section id="tab-recipe">
   <div class="card">
-    <h2>期限が近い食材を使うレシピ</h2>
+    <h2>在庫を使うレシピ</h2>
     <div class="hint">冷蔵庫にある食材と照らし合わせて、期限が近いものを優先しておすすめします。</div>
     <div class="filters" style="margin-top:8px">
-      <span class="chip on" data-rmode="urgent">期限が近いもの優先</span>
-      <span class="chip" data-rmode="all">作れるもの全部</span>
+      <button type="button" class="chip on" data-rmode="urgent" aria-pressed="true">期限が近いもの優先</button>
+      <button type="button" class="chip" data-rmode="ready" aria-pressed="false">材料がそろっている</button>
+      <button type="button" class="chip" data-rmode="all" aria-pressed="false">在庫を1つでも使う（全部）</button>
     </div>
     <button class="btn secondary" id="aiPrompt" style="margin-top:4px">AIに聞く用の文章をコピー（期限が近い食材入り）</button>
   </div>
@@ -239,11 +246,24 @@
       <input id="shopName" placeholder="買うもの" required>
       <button class="btn" style="flex:0 0 80px">追加</button>
     </form>
+    <div class="hint">各項目の「メモ」で、買う人への伝言（例：1Lを2本、いつもの青いパック）を残せます。家族と共有中は全員に見えます。</div>
     <div id="shopList" style="margin-top:8px"></div>
     <div class="row" style="margin-top:10px">
       <button class="btn secondary" id="shopToFridge">チェック済みを冷蔵庫に入れる</button>
       <button class="btn secondary" id="shopClear">チェック済みを消す</button>
     </div>
+  </div>
+  <div class="card" id="priceCard">
+    <h2>価格・内容量を比べる（計算機）</h2>
+    <div class="hint">前回と今回の価格と内容量を入れると、同じ量あたりで比べます。入力は保存されません。税込・税抜は同じ基準で、複数個セットは価格に対応する合計量を入れてください。</div>
+    <table class="pc" style="width:100%;border-collapse:collapse;margin-top:8px;font-size:14px">
+      <tr><th style="text-align:left;width:26%"></th><th>前回</th><th>今回</th></tr>
+      <tr><td>価格（円）</td><td><input id="pc-p1" type="number" min="0" step="any" inputmode="decimal" placeholder="198"></td><td><input id="pc-p2" type="number" min="0" step="any" inputmode="decimal" placeholder="178"></td></tr>
+      <tr><td>内容量</td><td><input id="pc-a1" type="number" min="0" step="any" inputmode="decimal" placeholder="200"></td><td><input id="pc-a2" type="number" min="0" step="any" inputmode="decimal" placeholder="150"></td></tr>
+      <tr><td>単位</td><td><select id="pc-u1"></select></td><td><select id="pc-u2"></select></td></tr>
+    </table>
+    <div id="pc-result" class="panel" style="margin-top:8px;display:none"></div>
+    <button type="button" class="sm" id="pc-reset" style="margin-top:8px">リセット</button>
   </div>
   <div class="card">
     <h2>残りわずかのストック</h2>
@@ -383,7 +403,9 @@
       <p>冷蔵庫の食材で作れる料理を、期限が近い食材を使うものから順に表示します。色付きの食材は冷蔵庫にあるもの、グレーの取り消し線はないものです。</p>
       <ul>
         <li><b>期限が近いもの優先</b>：5日以内に期限が来る食材を使う料理だけ。</li>
-        <li><b>作れるもの全部</b>：材料が1つでもある料理をすべて。</li>
+        <li><b>材料がそろっている</b>：主な材料がすべて家にある料理だけ。</li>
+        <li><b>在庫を1つでも使う（全部）</b>：材料が1つでもある料理をすべて。「不足 2」のように足りない数が出ます。</li>
+        <li>照合は材料の<b>名前</b>だけで行い、数量や調味料は見ていません。</li>
         <li><b>作った</b>：使った食材をまとめて「使い切った」にします。一部だけ使ったときはキャンセルして一覧で −1 を。</li>
         <li><b>足りないものを買い物リストへ</b>：ない材料を買い物リストに入れます。</li>
         <li><b>AIに聞く用の文章をコピー</b>：期限が近い食材を入れた質問文をコピーし、ChatGPT や Claude に貼ると別の提案がもらえます。</li>
@@ -404,6 +426,8 @@
       <summary>買い物リストと常備品</summary>
       <p>自分で入力する、一覧の「買い物リストへ」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを冷蔵庫に入れる」で1件ずつ登録します（「購入品の登録 1 / 3」のように進み具合が出ます）。途中で「買い物リストに戻る」を押したりアプリを閉じたりしても、まだ保存していない項目はリストに残り、次に開いたとき「続ける」から再開できます。</p>
       <p>常備品を使い切ると自動でリストに入り、「切れている常備品」にも表示されます。常備品をやめるには、一覧の「編集」でチェックを外して保存します。</p>
+      <p><b>買い物メモ</b>：各項目の「メモ」で、買う人への伝言（例：1Lを2本、いつもの青いパック）を残せます。品名の下に表示され、家族と共有中は全員に見えます。同じ名前を次に買い物リストへ入れたときは前回のメモを引き継ぎます（メモを消せば引き継ぎも消えます）。</p>
+      <p><b>価格・内容量を比べる</b>：買い物タブの計算機に前回と今回の価格と内容量を入れると、100gあたりなど同じ量あたりで比べて「何円・何％割安／割高」かを出します。入力は保存されません。g と kg、mL と L は換算しますが、g と mL のように換算できない単位どうしは比較しません。</p>
     </details>
     <details>
       <summary>家族と共有する</summary>
@@ -435,7 +459,8 @@
         <tr><td>データが消えた</td><td>ブラウザのサイトデータ削除やプライベートモードが原因。バックアップから読み込み</td></tr>
         <tr><td>スマホとPCで内容が違う</td><td>「家族と共有」で同じ家族コードに参加すると自動で揃う</td></tr>
         <tr><td>共有が同期されない</td><td>電波を確認して「今すぐ同期」を押す。両方の端末が同じ家族コードか確認する</td></tr>
-        <tr><td>レシピが出ない</td><td>「作れるもの全部」に切り替える</td></tr>
+        <tr><td>レシピが出ない</td><td>「在庫を1つでも使う（全部）」に切り替える</td></tr>
+        <tr><td>数量を0で保存できない</td><td>新規登録では0は登録できません。手元にあるものを登録してください。編集で0にすると「使い切った」扱いにするか確認が出ます</td></tr>
         <tr><td>画面が古いまま</td><td>アプリを閉じて開き直す</td></tr>
       </table>
     </details>
@@ -568,8 +593,8 @@ function renderFilters(){
   const locs = group==='fridge'? FRIDGE_LOCS : group==='stock'? LOCS.filter(l=>!FRIDGE_LOCS.includes(l)) : [];
   const present = new Set(state.items.filter(i=>group==='all'||groupOf(i)===group).map(i=>i.cat));
   const fs = [['all','すべて'],['alert','期限切れ・近い'],...locs.map(l=>[l,'📍'+l]),...CATS.filter(c=>present.has(c)).map(c=>[c,(CAT_EMOJI[c]||'')+c])];
-  $('#filters').innerHTML = fs.map(([k,v])=>`<span class="chip ${filter===k?'on':''}" data-f="${k}">${v}</span>`).join('');
-  document.querySelectorAll('#groupSeg button').forEach(b=>b.classList.toggle('on', b.dataset.g===group));
+  $('#filters').innerHTML = fs.map(([k,v])=>`<button type="button" class="chip ${filter===k?'on':''}" aria-pressed="${filter===k}" data-f="${k}">${v}</button>`).join('');
+  document.querySelectorAll('#groupSeg button').forEach(b=>{ b.classList.toggle('on', b.dataset.g===group); b.setAttribute('aria-pressed', b.dataset.g===group?'true':'false'); });
 }
 $('#filters').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; filter=c.dataset.f; renderList(); };
 $('#groupSeg').onclick = e=>{ const b=e.target.closest('button'); if(!b) return; group=b.dataset.g; if(LOCS.includes(filter)) filter='all'; renderList(); };
@@ -692,7 +717,7 @@ const EMOJI = {牛乳:'🥛',卵:'🥚',ヨーグルト:'🥣',チーズ:'🧀',
 let presetQ = '';
 function renderPresets(){
   const cats = CATS.filter(c=>PRESETS.some(p=>p[1]===c));
-  $('#presetCats').innerHTML = [`<span class="chip" data-c="${COOKED}">🍲 ${COOKED}</span>`, ...cats.map(c=>`<span class="chip" data-c="${c}">${CAT_EMOJI[c]||''} ${c}</span>`)].join('');
+  $('#presetCats').innerHTML = [`<button type="button" class="chip" data-c="${COOKED}">🍲 ${COOKED}</button>`, ...cats.map(c=>`<button type="button" class="chip" data-c="${c}">${CAT_EMOJI[c]||''} ${c}</button>`)].join('');
   const q = presetQ.trim();
   const cooked = (state.cooked||[]).filter(c=>!q || c.name.includes(q));
   const cookedHtml = (!q || cooked.length) ? `<div class="pgroup" data-cat="${COOKED}"><div class="ptitle">🍲 作った料理の残り（作り置き）</div><div class="pgrid">${cooked.map(c=>`<button type="button" class="pchip" data-leftover="${esc(c.name)}"><span class="em">🍲</span><span>${esc(c.name)}</span></button>`).join('')}<button type="button" class="pchip" data-leftover="" style="border-style:dashed"><span class="em">✏️</span><span>料理名を入力して登録</span></button></div></div>` : '';
@@ -716,7 +741,9 @@ $('#manualAdd').onclick = ()=>goManualAdd('');
 $('#presetCats').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; presetQ=''; $('#presetSearch').value=''; renderPresets(); const g=document.querySelector(`.pgroup[data-cat="${c.dataset.c}"]`); if(g) g.scrollIntoView({behavior:'smooth', block:'start'}); };
 $('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return;
   if(c.dataset.leftover!==undefined){ offerLeftover(c.dataset.leftover); if(!c.dataset.leftover){ $('#formTitle').textContent='🍲 作った料理の残りを登録'; $('#f-name').value=''; $('#f-name').placeholder='例：カレー'; $('#f-name').focus(); } return; }
-  applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「冷蔵庫に入れる」`); };
+  applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「${$('#submitBtn').textContent}」`); };
+// 編集中は追加用の候補一覧を隠す（候補をタップして編集内容を上書きしてしまう事故を防ぐ）
+function updatePresetCard(){ const editing=!!$('#f-id').value; $('#presetCard').style.display = editing? 'none':'block'; $('#editNote').style.display = editing? 'block':'none'; }
 function applyPreset(name){
   const p = PRESETS.find(x=>x[0]===name); if(!p) return;
   $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=p[2]==null? '' : addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
@@ -729,7 +756,7 @@ $('#f-name').addEventListener('change', e=>{
   if(state.staples.includes(e.target.value)) $('#f-staple').checked=true;
 });
 document.querySelectorAll('#tab-add .chip[data-days]').forEach(c=>c.onclick=()=>{ $('#f-exp').value = c.dataset.days===''?'':addDays(+c.dataset.days); });
-function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
+function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#qtyErr').style.display='none'; if($('#presetCard')) updatePresetCard(); $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
 function updateLeftoverBar(){
   const on = $('#f-cat').value===COOKED;
   $('#leftoverBar').style.display = on? 'block':'none';
@@ -759,19 +786,36 @@ function recordCooked(name){ state.cooked=(state.cooked||[]).filter(c=>c.name!==
 function editItem(item){
   showTab('add');
   $('#f-id').value=item.id; $('#f-name').value=item.name; $('#f-cat').value=item.cat; $('#f-loc').value=item.loc; $('#f-qty').value=item.qty; $('#f-unit').value=item.unit; $('#f-exp').value=item.exp||''; $('#f-memo').value=item.memo||''; $('#f-staple').checked=!!item.staple;
-  $('#formTitle').textContent='食材を編集'; $('#submitBtn').textContent='保存'; $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='キャンセル';
-  updateLeftoverBar();
-  window.scrollTo(0, $('#form').offsetTop-80);
+  $('#formTitle').textContent=`食材を編集：${item.name}`; $('#submitBtn').textContent='保存'; $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='キャンセル';
+  $('#qtyErr').style.display='none';
+  updateLeftoverBar(); updatePresetCard();
+  window.scrollTo(0, 0);
 }
 $('#cancelEdit').onclick = ()=>{ resetForm(); showTab('list'); };
 $('#form').onsubmit = e=>{
   e.preventDefault();
-  const data = {name:$('#f-name').value.trim(), cat:$('#f-cat').value, loc:$('#f-loc').value, qty:+$('#f-qty').value||1, unit:$('#f-unit').value.trim()||'個', exp:$('#f-exp').value||null, memo:$('#f-memo').value.trim(), staple:$('#f-staple').checked};
-  if(!data.name) return;
+  const id=$('#f-id').value;
+  // 数量の検証: 空欄・数でない・負数は保存しない。0 は新規では不可、編集では「使い切った」扱いにするか確認
+  const qraw=$('#f-qty').value.trim(); const qnum=Number(qraw);
+  const qErr=$('#qtyErr');
+  const showQtyErr=msg=>{ qErr.textContent=msg; qErr.style.display='block'; $('#f-qty').focus(); $('#f-qty').classList.add('flash'); setTimeout(()=>$('#f-qty').classList.remove('flash'),1200); };
+  qErr.style.display='none';
+  if(qraw==='' || !isFinite(qnum)){ showQtyErr('数量を数字で入力してください（例: 1、0.5、300）'); return; }
+  if(qnum<0){ showQtyErr('数量にマイナスは入力できません'); return; }
+  if(qnum===0 && !id){ showQtyErr('0 は登録できません。手元にない食材は登録せず、必要なら買い物リストに入れてください'); return; }
+  const data = {name:$('#f-name').value.trim(), cat:$('#f-cat').value, loc:$('#f-loc').value, qty:qnum, unit:$('#f-unit').value.trim()||'個', exp:$('#f-exp').value||null, memo:$('#f-memo').value.trim(), staple:$('#f-staple').checked};
+  if(!data.name){ $('#f-name').focus(); return; }
   if(data.staple && !state.staples.includes(data.name)) state.staples.push(data.name);
   if(!data.staple) state.staples = state.staples.filter(s=>s!==data.name);
-  const id=$('#f-id').value;
-  if(id){ touch(Object.assign(state.items.find(i=>i.id===id), data)); toast('保存しました'); save(); resetForm(); showTab('list'); return; }
+  if(id){
+    const cur=state.items.find(i=>i.id===id); if(!cur){ resetForm(); showTab('list'); return; }
+    if(qnum===0){
+      if(confirm(`数量 0 で保存すると「${cur.name}」は使い切った扱いになり、一覧から消えます（6秒間は元に戻せます）。よろしいですか？`)){ Object.assign(cur, data, {qty:cur.qty}); resetForm(); showTab('list'); finish(cur,'used'); }
+      else { showQtyErr('数量 0 では保存していません。残っている量を入力するか、キャンセルしてください'); }
+      return;
+    }
+    touch(Object.assign(cur, data)); toast('保存しました'); save(); resetForm(); showTab('list'); return;
+  }
   if(data.cat===COOKED){ data.made=todayStr(); recordCooked(data.name); }
   state.items.push(touch(Object.assign({id:uid(), added:todayStr()}, data)));
   // 買い物リストに同名があればチェック済みに
@@ -782,7 +826,7 @@ $('#form').onsubmit = e=>{
 
 // ---------- レシピ ----------
 let rmode='urgent';
-document.querySelectorAll('[data-rmode]').forEach(c=>c.onclick=()=>{ rmode=c.dataset.rmode; document.querySelectorAll('[data-rmode]').forEach(x=>x.classList.toggle('on',x===c)); renderRecipes(); });
+document.querySelectorAll('[data-rmode]').forEach(c=>c.onclick=()=>{ rmode=c.dataset.rmode; document.querySelectorAll('[data-rmode]').forEach(x=>{ x.classList.toggle('on',x===c); x.setAttribute('aria-pressed', x===c?'true':'false'); }); renderRecipes(); });
 function matchItems(keys){ return state.items.filter(it=>keys.some(k=>it.name.includes(k)||(it.name.length>=2 && k.includes(it.name)))); }
 function urgencyWeight(it){ const s=statusOf(it); return s==='expired'?4: s==='urgent'?3: s==='soon'?1.5: 0; }
 function scoreRecipes(){
@@ -800,10 +844,12 @@ function scoreRecipes(){
 function renderRecipes(){
   let list = scoreRecipes();
   if(rmode==='urgent') list = list.filter(x=>x.urgent>0);
+  if(rmode==='ready') list = list.filter(x=>x.missing.length===0);
   list.sort((a,b)=>b.score-a.score);
-  if(!list.length){ $('#recipeList').innerHTML = renderLeftovers() + `<div class="empty">${rmode==='urgent'?'期限が近い食材を使うレシピは今ありません。<br>「作れるもの全部」も見てみてください。':'食材を登録するとレシピを提案します。'}</div>`; return; }
-  $('#recipeList').innerHTML = renderLeftovers() + list.slice(0,20).map((x,idx)=>`<div class="card recipe" data-idx="${idx}">
-    <div class="title"><b>${esc(x.r.n)}</b><span class="hint">約${x.r.t}分 ・ 材料 ${x.used.length}/${x.r.i.length} あり</span></div>
+  const note = `<div class="hint" style="margin:0 0 8px">材料の<b>名前</b>で照合しています（数量と調味料は見ていません）。${rmode==='ready'?'主な材料がすべて家にある料理だけを表示中。':rmode==='urgent'?'5日以内に期限が来る食材を使う料理を表示中。':'家にある材料を1つでも使う料理をすべて表示中。不足分は「足りないものを買い物リストへ」で入れられます。'}</div>`;
+  if(!list.length){ $('#recipeList').innerHTML = renderLeftovers() + note + `<div class="empty">${rmode==='urgent'?'期限が近い食材を使うレシピは今ありません。<br>「材料がそろっている」や「全部」も見てみてください。':rmode==='ready'?'主な材料がすべてそろっている料理は今ありません。<br>「全部」で不足分を確認できます。':'食材を登録するとレシピを提案します。'}</div>`; return; }
+  $('#recipeList').innerHTML = renderLeftovers() + note + list.slice(0,20).map((x,idx)=>`<div class="card recipe" data-idx="${idx}">
+    <div class="title"><b>${esc(x.r.n)}</b><span class="hint">約${x.r.t}分 ・ ${x.missing.length? `<span style="color:var(--urgent)">不足 ${x.missing.length}</span>（${x.used.length}/${x.r.i.length} あり）` : '<span style="color:var(--ok)">主な材料そろっています</span>'}</span></div>
     <div class="sub">使う食材</div>
     <div class="chips">${x.used.map(it=>`<span class="chip tag ${statusOf(it)}">${esc(it.name)}（${expLabel(it)}）</span>`).join('')}${x.missing.map(m=>`<span class="chip tag missing">${esc(m)}</span>`).join('')}</div>
     <div class="sub">調味料: ${esc(x.r.s)}</div>
@@ -858,25 +904,76 @@ $('#aiPrompt').onclick = async ()=>{
 };
 
 // ---------- 買い物 ----------
-function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !s.done)) return null; const entry=touch({id:uid(), name, done:false, auto}); state.shopping.push(entry); save(); renderShop(); return entry; }
+function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !s.done)) return null; const entry=touch({id:uid(), name, done:false, auto}); const prev=(state.shopMemos||{})[name]; if(prev) entry.memo=prev; state.shopping.push(entry); save(); renderShop(); return entry; }
 $('#shopForm').onsubmit = e=>{ e.preventDefault(); const n=$('#shopName').value.trim(); if(n){ addShop(n); $('#shopName').value=''; } };
 function renderShop(){
-  $('#shopList').innerHTML = state.shopping.length? state.shopping.map(s=>`<div class="shop ${s.done?'done':''}" data-id="${s.id}"><input type="checkbox" ${s.done?'checked':''}><span class="n">${esc(s.name)}${s.auto?' <span class="hint" style="display:inline">(常備品)</span>':''}</span><button class="sm" data-act="del">✕</button></div>`).join('') : '<div class="empty">買い物リストは空です</div>';
+  $('#shopList').innerHTML = state.shopping.length? state.shopping.map(shopRow).join('') : '<div class="empty">買い物リストは空です</div>';
+  if(memoEditId){ const inp=document.querySelector('#shopList input[data-role=memoIn]'); if(inp){ inp.focus(); inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); document.querySelector('#shopList [data-act=memoSave]').click(); } }; } }
   const inFridge = new Set(state.items.map(i=>i.name));
   const inShop = new Set(state.shopping.filter(s=>!s.done).map(s=>s.name));
   const out = state.staples.filter(s=>!inFridge.has(s) && !inShop.has(s));
-  $('#stapleList').innerHTML = out.length? `<div class="chips" style="margin-top:6px">${out.map(s=>`<span class="chip" data-s="${esc(s)}">＋ ${esc(s)}</span>`).join('')}</div>` : '<div class="hint">切れている常備品はありません</div>';
+  $('#stapleList').innerHTML = out.length? `<div class="chips" style="margin-top:6px">${out.map(s=>`<button type="button" class="chip" data-s="${esc(s)}">＋ ${esc(s)}</button>`).join('')}</div>` : '<div class="hint">切れている常備品はありません</div>';
   const low = state.items.filter(i=>groupOf(i)==='stock' && !isCooked(i) && i.qty<=1 && !inShop.has(i.name) && (!i.exp || daysLeft(i.exp)>14));
-  $('#lowStock').innerHTML = low.length? `<div class="chips" style="margin-top:6px">${low.map(i=>`<span class="chip" data-s="${esc(i.name)}">＋ ${esc(i.name)}（残り${fmtQty(i.qty)}${esc(i.unit)}）</span>`).join('')}</div>` : '<div class="hint">残りわずかのストックはありません</div>';
+  $('#lowStock').innerHTML = low.length? `<div class="chips" style="margin-top:6px">${low.map(i=>`<button type="button" class="chip" data-s="${esc(i.name)}">＋ ${esc(i.name)}（残り${fmtQty(i.qty)}${esc(i.unit)}）</button>`).join('')}</div>` : '<div class="hint">残りわずかのストックはありません</div>';
+}
+// 買い物メモ（買う人への伝言）。項目と一緒に保存され、家族共有でも同期される。同じ名前を次に追加したときは前回のメモを引き継ぐ。
+let memoEditId=null;
+function shopRow(s){
+  const editing = memoEditId===s.id;
+  return `<div class="shop ${s.done?'done':''}" data-id="${s.id}" style="flex-wrap:wrap">
+    <input type="checkbox" ${s.done?'checked':''} aria-label="${esc(s.name)} を買った">
+    <span class="n">${esc(s.name)}${s.auto?' <span class="hint" style="display:inline">(常備品)</span>':''}${s.memo && !editing? `<br><span class="hint" style="display:inline">📝 ${esc(s.memo)}</span>`:''}</span>
+    <button class="sm" data-act="memo" aria-label="メモを編集">${s.memo?'📝':'メモ'}</button>
+    <button class="sm" data-act="del" aria-label="削除">✕</button>
+    ${editing? `<div class="row" style="flex-basis:100%;margin-top:6px"><input data-role="memoIn" placeholder="例: いつもの青いパック。なければ別メーカーでもOK" value="${esc(s.memo||'')}" maxlength="120"><button class="sm primary" data-act="memoSave" style="flex:0 0 60px">保存</button></div>`:''}
+  </div>`;
 }
 $('#lowStock').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s); toast('買い物リストに追加'); } };
 $('#shopList').onclick = e=>{
   const row=e.target.closest('.shop'); if(!row) return; const s=state.shopping.find(x=>x.id===row.dataset.id);
-  if(e.target.matches('input')){ s.done=e.target.checked; touch(s); save(); renderShop(); }
-  if(e.target.dataset.act==='del'){ state.shopping=state.shopping.filter(x=>x!==s); tomb(s.id); save(); renderShop(); }
+  if(e.target.matches('input[type=checkbox]')){ s.done=e.target.checked; touch(s); save(); renderShop(); }
+  const act=e.target.dataset.act;
+  if(act==='del'){ state.shopping=state.shopping.filter(x=>x!==s); tomb(s.id); save(); renderShop(); }
+  if(act==='memo'){ memoEditId = memoEditId===s.id? null : s.id; renderShop(); }
+  if(act==='memoSave'){ const v=row.querySelector('input[data-role=memoIn]').value.trim(); s.memo=v; touch(s); state.shopMemos=state.shopMemos||{}; if(v) state.shopMemos[s.name]=v; else delete state.shopMemos[s.name]; memoEditId=null; save(); renderShop(); toast(v?'メモを保存しました':'メモを消しました'); }
 };
 $('#stapleList').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s, true); toast('買い物リストに追加'); } };
 $('#shopClear').onclick = ()=>{ state.shopping.filter(s=>s.done).forEach(s=>tomb(s.id)); state.shopping=state.shopping.filter(s=>!s.done); save(); renderShop(); };
+// ---------- 価格・内容量の比較計算機（保存しない） ----------
+const PC_UNITS = {g:{kind:'weight',f:1}, kg:{kind:'weight',f:1000}, mL:{kind:'volume',f:1}, L:{kind:'volume',f:1000}, '個':{kind:'個',f:1}, '本':{kind:'本',f:1}, '枚':{kind:'枚',f:1}};
+const PC_BASE = {weight:[100,'100g'], volume:[100,'100mL'], '個':[1,'1個'], '本':[1,'1本'], '枚':[1,'1枚']};
+['pc-u1','pc-u2'].forEach(id=>{ $('#'+id).innerHTML = Object.keys(PC_UNITS).map(u=>`<option>${u}</option>`).join(''); });
+function pcFmt(n){ return Number.isInteger(n)? String(n) : '約'+(Math.round(n*10)/10).toLocaleString('ja-JP',{maximumFractionDigits:1}); }
+function pcCalc(){
+  const v=id=>{ const s=$('#'+id).value.trim(); return s===''? null : Number(s); };
+  const p1=v('pc-p1'), p2=v('pc-p2'), a1=v('pc-a1'), a2=v('pc-a2'); const u1=$('#pc-u1').value, u2=$('#pc-u2').value;
+  const out=$('#pc-result'); const lines=[];
+  const bad=[p1,p2,a1,a2].some(x=>x!==null && !isFinite(x));
+  if(bad){ out.style.display='block'; out.innerHTML='<div class="hint" style="color:var(--expired)">数字で入力してください</div>'; return; }
+  if((p1!==null && p1<0)||(p2!==null && p2<0)){ out.style.display='block'; out.innerHTML='<div class="hint" style="color:var(--expired)">価格にマイナスは入力できません</div>'; return; }
+  if(p1!==null && p2!==null){
+    const d=p2-p1;
+    lines.push(`<div><b>商品価格の差</b>：${d===0?'同じ':`今回は前回より <b>${pcFmt(Math.abs(d))}円 ${d<0?'安い':'高い'}</b>`}</div>`);
+  }
+  if(p1!==null && p2!==null && a1!==null && a2!==null){
+    if(a1<=0 || a2<=0){ lines.push('<div class="hint">内容量は 0 より大きい数で入力してください（単価の計算をしていません）</div>'); }
+    else if(PC_UNITS[u1].kind!==PC_UNITS[u2].kind){ lines.push(`<div class="hint" style="color:var(--urgent)">${u1} と ${u2} は換算できない単位どうしなので、同じ量あたりの比較はしていません。単位をそろえてください。</div>`); }
+    else {
+      const kind=PC_UNITS[u1].kind, [base,label]=PC_BASE[kind];
+      const q1=a1*PC_UNITS[u1].f, q2=a2*PC_UNITS[u2].f; // 基準単位（g / mL / 個）に換算
+      const up1=p1/q1*base, up2=p2/q2*base;
+      lines.push(`<div style="display:flex;gap:12px;margin-top:6px"><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div class="hint" style="margin:0">前回 ${label}あたり</div><b style="font-size:18px">${pcFmt(up1)}円</b></div><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div class="hint" style="margin:0">今回 ${label}あたり</div><b style="font-size:18px">${pcFmt(up2)}円</b></div></div>`);
+      const diff=up2-up1;
+      if(Math.abs(diff)<1e-9) lines.push(`<div style="margin-top:6px"><b>同じ量あたりの価格は同じ</b>です</div>`);
+      else if(up1===0) lines.push(`<div style="margin-top:6px">同じ量あたりでは今回のほうが <b>${pcFmt(Math.abs(diff))}円 高い</b>（前回が0円のため増減率は計算できません）</div>`);
+      else { const pct=Math.abs(diff)/up1*100; lines.push(`<div style="margin-top:6px"><b>同じ量あたりでは今回のほうが ${pcFmt(Math.abs(diff))}円・${pcFmt(pct)}％ ${diff<0?'割安':'割高'}</b>${(p2<p1 && diff>0)?'（商品価格は安いですが、量が少ないぶん割高です）':(p2>p1 && diff<0)?'（商品価格は高いですが、量が多いぶん割安です）':''}</div>`); }
+    }
+  } else if(p1!==null && p2!==null){ lines.push('<div class="hint">内容量も入れると、同じ量あたりで比べられます</div>'); }
+  out.style.display = lines.length? 'block':'none'; out.innerHTML = lines.join('');
+}
+['pc-p1','pc-p2','pc-a1','pc-a2','pc-u1','pc-u2'].forEach(id=>{ $('#'+id).addEventListener('input', pcCalc); $('#'+id).addEventListener('change', pcCalc); });
+$('#pc-reset').onclick = ()=>{ ['pc-p1','pc-p2','pc-a1','pc-a2'].forEach(id=>$('#'+id).value=''); $('#pc-u1').value='g'; $('#pc-u2').value='g'; pcCalc(); };
+
 // 購入品の登録キュー: 買い物項目は「冷蔵庫に保存できた時点」で初めて消す。途中でやめても再読み込みしても残る。
 const PQ_KEY='fridge-pq-v1';
 let pq=null; try{ pq=JSON.parse(localStorage.getItem(PQ_KEY)); }catch(e){}
@@ -1060,7 +1157,7 @@ function mergeStates(local, remote){
     tombstones: [...dead].map(([id,t])=>({id,t})).sort((a,b)=>a.t-b.t).slice(-300),
   };
 }
-function adopt(s){ state = Object.assign({items:[],history:[],shopping:[],staples:[]}, s, {settings: state.settings, cooked: state.cooked}); saveLocal(); renderAll(); }
+function adopt(s){ state = Object.assign({items:[],history:[],shopping:[],staples:[]}, s, {settings: state.settings, cooked: state.cooked, shopMemos: state.shopMemos}); saveLocal(); renderAll(); }
 let pushTimer=null, syncing=false, pendingPush=false;
 function setShareStatus(msg){ const el=$('#shareStatus'); if(el) el.textContent=msg; }
 function schedulePush(){ if(!share) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushNow, 800); }
