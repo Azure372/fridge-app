@@ -175,22 +175,15 @@
 <!-- 追加 -->
 <section id="tab-add">
   <div class="card welcome" id="editNote" style="display:none">✏️ 編集中です。ほかの食材を追加するには「キャンセル」を押してください。</div>
-  <div class="card" id="presetCard">
-    <h2>食材・ストックを追加</h2>
-    <button type="button" class="btn secondary" id="manualAdd" style="margin-bottom:10px">✏️ 名前を入力して追加（候補にないもの）</button>
-    <div class="hint" style="margin-bottom:4px">よく買うものはタップするだけで期限の目安まで入ります。</div>
-    <input type="search" id="presetSearch" placeholder="候補を絞り込み（例：にんじん）">
-    <div class="jump" id="presetCats"></div>
-    <div id="presets"></div>
-  </div>
   <div class="card">
     <h2 id="formTitle">食材を追加</h2>
     <form id="form" novalidate>
       <input type="hidden" id="f-id">
       <input type="hidden" id="f-shopid">
-      <label>名前</label>
-      <input id="f-name" required placeholder="例：牛乳" list="nameList">
+      <label for="f-name">名前 <span class="hint" style="display:inline">（入力すると候補が出ます。下の「よく買うもの」からも選べます）</span></label>
+      <input id="f-name" required placeholder="例：牛乳" list="nameList" autocomplete="off">
       <datalist id="nameList"></datalist>
+      <div id="shopMemoNote" class="hint" style="display:none;background:#fef9c3;border-radius:8px;padding:6px 8px;margin-top:6px"></div>
       <div class="row">
         <div><label>分類</label><select id="f-cat"></select></div>
         <div><label>保存場所</label><select id="f-loc"></select></div>
@@ -210,16 +203,43 @@
       <div class="chips" style="margin-top:6px">
         <button type="button" class="chip" data-days="1">明日</button><button type="button" class="chip" data-days="3">3日後</button><button type="button" class="chip" data-days="7">1週間</button><button type="button" class="chip" data-days="14">2週間</button><button type="button" class="chip" data-days="30">1か月</button><button type="button" class="chip" data-days="">期限なし</button>
       </div>
-      <label>メモ</label>
+      <label for="f-memo">メモ（在庫の状態）</label>
       <input id="f-memo" placeholder="開封済み、半分使用済み など">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:var(--text)">
         <input type="checkbox" id="f-staple"> 常備品（なくなったら買い物リストに自動追加）
       </label>
+      <details id="buyDetails" class="panel" style="margin-top:10px">
+        <summary style="cursor:pointer;font-weight:700">💴 購入価格も記録する（任意）</summary>
+        <div class="hint" style="margin-top:6px">記録しておくと、次の買い物で「前回の購入と比較」に前回の値が自動で出ます。金額は<b>税込の合計</b>、内容量は<b>その金額に対応する合計量</b>です（例：牛乳を2本で436円なら、内容量は 2000 mL）。在庫の数量（2本）とは別の欄です。</div>
+        <label for="b-product">商品名（比較用。ブランドや種類で区別）</label>
+        <input id="b-product" list="productList" placeholder="例：〇〇牛乳 1L" autocomplete="off">
+        <datalist id="productList"></datalist>
+        <div class="row">
+          <div><label for="b-price">購入金額（円・税込・合計）</label><input id="b-price" type="number" min="0" step="any" inputmode="decimal" placeholder="436"></div>
+          <div><label for="b-date">購入日</label><input id="b-date" type="date"></div>
+        </div>
+        <div class="row">
+          <div><label for="b-amount">内容量（合計）</label><input id="b-amount" type="number" min="0" step="any" inputmode="decimal" placeholder="2000"></div>
+          <div style="flex:0 0 110px"><label for="b-unit">単位</label><select id="b-unit"></select></div>
+        </div>
+        <div id="b-prev" class="hint" style="margin-top:6px"></div>
+        <div id="b-err" class="hint" style="display:none;color:var(--expired)"></div>
+      </details>
       <div style="margin-top:14px" class="row">
         <button type="submit" class="btn" id="submitBtn">冷蔵庫に入れる</button>
         <button type="button" class="btn secondary" id="cancelEdit" style="display:none">キャンセル</button>
       </div>
     </form>
+  </div>
+  <div class="card" id="presetCard">
+    <h2>よく買うものから選ぶ</h2>
+    <div class="hint" style="margin-bottom:4px">タップすると上のフォームに名前・分類・単位・期限の目安が入ります。</div>
+    <input type="search" id="presetSearch" placeholder="候補を絞り込み（例：にんじん）">
+    <div class="jump" id="presetCats"></div>
+    <details id="presetFold" style="margin-top:6px">
+      <summary style="cursor:pointer;color:var(--accent);padding:6px 0">候補一覧を開く（分類ごと）</summary>
+      <div id="presets"></div>
+    </details>
   </div>
 </section>
 
@@ -253,17 +273,10 @@
       <button class="btn secondary" id="shopClear">チェック済みを消す</button>
     </div>
   </div>
-  <div class="card" id="priceCard">
-    <h2>価格・内容量を比べる（計算機）</h2>
-    <div class="hint">前回と今回の価格と内容量を入れると、同じ量あたりで比べます。入力は保存されません。税込・税抜は同じ基準で、複数個セットは価格に対応する合計量を入れてください。</div>
-    <table class="pc" style="width:100%;border-collapse:collapse;margin-top:8px;font-size:14px">
-      <tr><th style="text-align:left;width:26%"></th><th>前回</th><th>今回</th></tr>
-      <tr><td>価格（円）</td><td><input id="pc-p1" type="number" min="0" step="any" inputmode="decimal" placeholder="198"></td><td><input id="pc-p2" type="number" min="0" step="any" inputmode="decimal" placeholder="178"></td></tr>
-      <tr><td>内容量</td><td><input id="pc-a1" type="number" min="0" step="any" inputmode="decimal" placeholder="200"></td><td><input id="pc-a2" type="number" min="0" step="any" inputmode="decimal" placeholder="150"></td></tr>
-      <tr><td>単位</td><td><select id="pc-u1"></select></td><td><select id="pc-u2"></select></td></tr>
-    </table>
-    <div id="pc-result" class="panel" style="margin-top:8px;display:none"></div>
-    <button type="button" class="sm" id="pc-reset" style="margin-top:8px">リセット</button>
+  <div class="card" id="cmpCard">
+    <h2>前回の購入と比較</h2>
+    <div class="hint">購入品の登録で「購入価格も記録する」を使った商品を選ぶと、前回の値が自動で出ます。ここで入力しても購入記録は作られません。</div>
+    <div id="cmpBody"></div>
   </div>
   <div class="card">
     <h2>残りわずかのストック</h2>
@@ -323,6 +336,11 @@
     <div id="wasteTop" class="hint" style="margin-top:8px"></div>
   </div>
   <div class="card">
+    <h2>購入記録（価格・内容量）</h2>
+    <div class="hint">購入品の登録で記録したものです。在庫を使い切っても残り、「前回の購入と比較」に使われます。誤入力は「修正」で直せます。</div>
+    <div id="purchaseList"></div>
+  </div>
+  <div class="card">
     <h2>履歴</h2>
     <div id="history"></div>
   </div>
@@ -374,8 +392,8 @@
     </details>
     <details>
       <summary>食材を追加する</summary>
-      <p><b>よく買うものから</b>：分類をタップ → 食材名をタップ → 期限を確認して「冷蔵庫に入れる」。</p>
-      <p><b>手入力</b>：名前・分類・保存場所を入れ、期限はカレンダーか「明日」「1週間」などのボタンで。調味料など期限がないものは「期限なし」。</p>
+      <p><b>手入力</b>：追加タブを開くとすぐ上に入力フォームがあります。名前を打つと候補が出ます。期限はカレンダーか「明日」「1週間」などのボタンで。調味料など期限がないものは「期限なし」。</p>
+      <p><b>よく買うものから</b>：フォームの下の「よく買うものから選ぶ」で検索するか「候補一覧を開く」から食材をタップすると、上のフォームに名前・分類・単位・期限の目安が入ります。</p>
       <p><b>常備品</b>にチェックすると、使い切ったときに買い物リストへ自動で入ります（牛乳・卵など）。</p>
       <p><b>買い物リストから</b>：買ったものにチェック →「チェック済みを冷蔵庫に入れる」で、1つずつ登録フォームが開きます。</p>
     </details>
@@ -427,7 +445,7 @@
       <p>自分で入力する、一覧の「買い物リストへ」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを冷蔵庫に入れる」で1件ずつ登録します（「購入品の登録 1 / 3」のように進み具合が出ます）。途中で「買い物リストに戻る」を押したりアプリを閉じたりしても、まだ保存していない項目はリストに残り、次に開いたとき「続ける」から再開できます。</p>
       <p>常備品を使い切ると自動でリストに入り、「切れている常備品」にも表示されます。常備品をやめるには、一覧の「編集」でチェックを外して保存します。</p>
       <p><b>買い物メモ</b>：各項目の「メモ」で、買う人への伝言（例：1Lを2本、いつもの青いパック）を残せます。品名の下に表示され、家族と共有中は全員に見えます。同じ名前を次に買い物リストへ入れたときは前回のメモを引き継ぎます（メモを消せば引き継ぎも消えます）。</p>
-      <p><b>価格・内容量を比べる</b>：買い物タブの計算機に前回と今回の価格と内容量を入れると、100gあたりなど同じ量あたりで比べて「何円・何％割安／割高」かを出します。入力は保存されません。g と kg、mL と L は換算しますが、g と mL のように換算できない単位どうしは比較しません。</p>
+      <p><b>購入価格の記録と前回との比較</b>：登録フォームの「購入価格も記録する（任意）」に商品名・購入金額（税込・合計）・内容量（合計）・購入日を入れると記録されます。次の買い物では、買い物タブの「前回の購入と比較」で商品を選ぶと前回の値が自動で出て、今回の価格と内容量を入れるだけで「何円・何％割安／割高」が分かります（比較画面で入力しただけでは記録されません）。記録は在庫を使い切っても残り、「記録・設定」タブで修正・削除できます。商品名は「〇〇牛乳 1L」のようにブランドで区別し、同じ商品の容量違いは内容量で比較します。g と kg、mL と L は換算しますが、g と mL のように換算できない単位どうしは比較しません。</p>
     </details>
     <details>
       <summary>家族と共有する</summary>
@@ -539,7 +557,9 @@ const RECIPES = [
 // ---------- 状態 ----------
 const KEY = 'fridge-app-v1';
 let state = {items:[], history:[], shopping:[], staples:[]};
-function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) state = Object.assign(state, s); }catch(e){} }
+function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) state = Object.assign(state, s); }catch(e){} normalizeState(); }
+// 旧形式のデータ（purchases などが無い）でも動くよう、足りない配列を補う
+function normalizeState(){ ['items','history','shopping','staples','purchases','tombstones'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; }); }
 function saveLocal(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('保存できない環境です（この表示中だけデータが残ります）'); } }
 function save(){ saveLocal(); if(typeof schedulePush==='function') schedulePush(); }
 // 共有時の衝突解決用: 変更時刻と削除の記録
@@ -737,13 +757,13 @@ function goManualAdd(name){
   const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash');
   setTimeout(()=>n.focus(), 350);
 }
-$('#manualAdd').onclick = ()=>goManualAdd('');
+$('#presetSearch').addEventListener('input', ()=>{ if($('#presetSearch').value.trim()) $('#presetFold').open=true; });
 $('#presetCats').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; presetQ=''; $('#presetSearch').value=''; renderPresets(); const g=document.querySelector(`.pgroup[data-cat="${c.dataset.c}"]`); if(g) g.scrollIntoView({behavior:'smooth', block:'start'}); };
 $('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return;
   if(c.dataset.leftover!==undefined){ offerLeftover(c.dataset.leftover); if(!c.dataset.leftover){ $('#formTitle').textContent='🍲 作った料理の残りを登録'; $('#f-name').value=''; $('#f-name').placeholder='例：カレー'; $('#f-name').focus(); } return; }
   applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「${$('#submitBtn').textContent}」`); };
 // 編集中は追加用の候補一覧を隠す（候補をタップして編集内容を上書きしてしまう事故を防ぐ）
-function updatePresetCard(){ const editing=!!$('#f-id').value; $('#presetCard').style.display = editing? 'none':'block'; $('#editNote').style.display = editing? 'block':'none'; }
+function updatePresetCard(){ const editing=!!$('#f-id').value, registering=!!$('#f-shopid').value; $('#presetCard').style.display = (editing||registering)? 'none':'block'; $('#editNote').style.display = editing? 'block':'none'; }
 function applyPreset(name){
   const p = PRESETS.find(x=>x[0]===name); if(!p) return;
   $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=p[2]==null? '' : addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
@@ -756,7 +776,7 @@ $('#f-name').addEventListener('change', e=>{
   if(state.staples.includes(e.target.value)) $('#f-staple').checked=true;
 });
 document.querySelectorAll('#tab-add .chip[data-days]').forEach(c=>c.onclick=()=>{ $('#f-exp').value = c.dataset.days===''?'':addDays(+c.dataset.days); });
-function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#qtyErr').style.display='none'; if($('#presetCard')) updatePresetCard(); $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
+function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#qtyErr').style.display='none'; $('#shopMemoNote').style.display='none'; if(typeof resetBuyFields==='function') resetBuyFields(); if($('#presetCard')) updatePresetCard(); $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
 function updateLeftoverBar(){
   const on = $('#f-cat').value===COOKED;
   $('#leftoverBar').style.display = on? 'block':'none';
@@ -788,6 +808,7 @@ function editItem(item){
   $('#f-id').value=item.id; $('#f-name').value=item.name; $('#f-cat').value=item.cat; $('#f-loc').value=item.loc; $('#f-qty').value=item.qty; $('#f-unit').value=item.unit; $('#f-exp').value=item.exp||''; $('#f-memo').value=item.memo||''; $('#f-staple').checked=!!item.staple;
   $('#formTitle').textContent=`食材を編集：${item.name}`; $('#submitBtn').textContent='保存'; $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='キャンセル';
   $('#qtyErr').style.display='none';
+  resetBuyFields(); fillBuyFields(purchases().find(r=>r.id===item.purchaseId));
   updateLeftoverBar(); updatePresetCard();
   window.scrollTo(0, 0);
 }
@@ -805,6 +826,9 @@ $('#form').onsubmit = e=>{
   if(qnum===0 && !id){ showQtyErr('0 は登録できません。手元にない食材は登録せず、必要なら買い物リストに入れてください'); return; }
   const data = {name:$('#f-name').value.trim(), cat:$('#f-cat').value, loc:$('#f-loc').value, qty:qnum, unit:$('#f-unit').value.trim()||'個', exp:$('#f-exp').value||null, memo:$('#f-memo').value.trim(), staple:$('#f-staple').checked};
   if(!data.name){ $('#f-name').focus(); return; }
+  // 購入価格（任意）: 入力があれば検証。不正なら保存しない
+  const buy = readBuyFields(); const bErr=$('#b-err'); bErr.style.display='none';
+  if(buy && buy.error){ $('#buyDetails').open=true; bErr.textContent=buy.error; bErr.style.display='block'; $('#b-price').focus(); return; }
   if(data.staple && !state.staples.includes(data.name)) state.staples.push(data.name);
   if(!data.staple) state.staples = state.staples.filter(s=>s!==data.name);
   if(id){
@@ -814,14 +838,17 @@ $('#form').onsubmit = e=>{
       else { showQtyErr('数量 0 では保存していません。残っている量を入力するか、キャンセルしてください'); }
       return;
     }
+    // 購入記録: この在庫に紐づく記録があれば更新、なければ入力があるときだけ新規作成。空欄なら既存の記録はそのまま
+    if(buy){ const rec=purchases().find(r=>r.id===cur.purchaseId); if(rec){ Object.assign(rec, buy, {itemName:data.name}); touch(rec); } else { const nr=touch(Object.assign({id:uid(), itemName:data.name}, buy)); purchases().push(nr); data.purchaseId=nr.id; } }
     touch(Object.assign(cur, data)); toast('保存しました'); save(); resetForm(); showTab('list'); return;
   }
   if(data.cat===COOKED){ data.made=todayStr(); recordCooked(data.name); }
+  if(buy){ const nr=touch(Object.assign({id:uid(), itemName:data.name}, buy)); purchases().push(nr); data.purchaseId=nr.id; }
   state.items.push(touch(Object.assign({id:uid(), added:todayStr()}, data)));
   // 買い物リストに同名があればチェック済みに
   state.shopping.forEach(s=>{ if(s.name===data.name && !s.done){ s.done=true; touch(s); } });
-  save(); toast(`${data.name} を追加しました`);
-  const keep = $('#f-staple').checked; resetForm(); renderAll(); $('#f-name').focus();
+  save(); toast(buy? `${data.name} を追加し、購入価格を記録しました` : `${data.name} を追加しました`);
+  resetForm(); renderAll(); $('#f-name').focus();
 };
 
 // ---------- レシピ ----------
@@ -908,7 +935,7 @@ function addShop(name, auto=false){ if(state.shopping.some(s=>s.name===name && !
 $('#shopForm').onsubmit = e=>{ e.preventDefault(); const n=$('#shopName').value.trim(); if(n){ addShop(n); $('#shopName').value=''; } };
 function renderShop(){
   $('#shopList').innerHTML = state.shopping.length? state.shopping.map(shopRow).join('') : '<div class="empty">買い物リストは空です</div>';
-  if(memoEditId){ const inp=document.querySelector('#shopList input[data-role=memoIn]'); if(inp){ inp.focus(); inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); document.querySelector('#shopList [data-act=memoSave]').click(); } }; } }
+  if(memoEditId){ const inp=document.querySelector('#shopList input[data-role=memoIn]'); if(inp){ if(document.activeElement===document.body) inp.focus(); inp.oninput=()=>{ memoDraft=inp.value; }; inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); document.querySelector('#shopList [data-act=memoSave]').click(); } }; } }
   const inFridge = new Set(state.items.map(i=>i.name));
   const inShop = new Set(state.shopping.filter(s=>!s.done).map(s=>s.name));
   const out = state.staples.filter(s=>!inFridge.has(s) && !inShop.has(s));
@@ -917,7 +944,7 @@ function renderShop(){
   $('#lowStock').innerHTML = low.length? `<div class="chips" style="margin-top:6px">${low.map(i=>`<button type="button" class="chip" data-s="${esc(i.name)}">＋ ${esc(i.name)}（残り${fmtQty(i.qty)}${esc(i.unit)}）</button>`).join('')}</div>` : '<div class="hint">残りわずかのストックはありません</div>';
 }
 // 買い物メモ（買う人への伝言）。項目と一緒に保存され、家族共有でも同期される。同じ名前を次に追加したときは前回のメモを引き継ぐ。
-let memoEditId=null;
+let memoEditId=null, memoDraft=null; // memoDraft: 編集中の下書き（チェック切り替えなどの再描画でも消さない）
 function shopRow(s){
   const editing = memoEditId===s.id;
   return `<div class="shop ${s.done?'done':''}" data-id="${s.id}" style="flex-wrap:wrap">
@@ -925,7 +952,7 @@ function shopRow(s){
     <span class="n">${esc(s.name)}${s.auto?' <span class="hint" style="display:inline">(常備品)</span>':''}${s.memo && !editing? `<br><span class="hint" style="display:inline">📝 ${esc(s.memo)}</span>`:''}</span>
     <button class="sm" data-act="memo" aria-label="メモを編集">${s.memo?'📝':'メモ'}</button>
     <button class="sm" data-act="del" aria-label="削除">✕</button>
-    ${editing? `<div class="row" style="flex-basis:100%;margin-top:6px"><input data-role="memoIn" placeholder="例: いつもの青いパック。なければ別メーカーでもOK" value="${esc(s.memo||'')}" maxlength="120"><button class="sm primary" data-act="memoSave" style="flex:0 0 60px">保存</button></div>`:''}
+    ${editing? `<div class="row" style="flex-basis:100%;margin-top:6px"><input data-role="memoIn" aria-label="${esc(s.name)} の買い物メモ" placeholder="例: いつもの青いパック。なければ別メーカーでもOK" value="${esc(memoDraft!==null? memoDraft : (s.memo||''))}" maxlength="120"><button class="sm primary" data-act="memoSave" style="flex:0 0 60px">保存</button></div>`:''}
   </div>`;
 }
 $('#lowStock').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s); toast('買い物リストに追加'); } };
@@ -934,45 +961,119 @@ $('#shopList').onclick = e=>{
   if(e.target.matches('input[type=checkbox]')){ s.done=e.target.checked; touch(s); save(); renderShop(); }
   const act=e.target.dataset.act;
   if(act==='del'){ state.shopping=state.shopping.filter(x=>x!==s); tomb(s.id); save(); renderShop(); }
-  if(act==='memo'){ memoEditId = memoEditId===s.id? null : s.id; renderShop(); }
-  if(act==='memoSave'){ const v=row.querySelector('input[data-role=memoIn]').value.trim(); s.memo=v; touch(s); state.shopMemos=state.shopMemos||{}; if(v) state.shopMemos[s.name]=v; else delete state.shopMemos[s.name]; memoEditId=null; save(); renderShop(); toast(v?'メモを保存しました':'メモを消しました'); }
+  if(act==='memo'){ memoEditId = memoEditId===s.id? null : s.id; memoDraft=null; renderShop(); }
+  if(act==='memoSave'){ const v=row.querySelector('input[data-role=memoIn]').value.trim(); s.memo=v; touch(s); state.shopMemos=state.shopMemos||{}; if(v) state.shopMemos[s.name]=v; else delete state.shopMemos[s.name]; memoEditId=null; memoDraft=null; save(); renderShop(); toast(v?'メモを保存しました':'メモを消しました'); }
 };
 $('#stapleList').onclick = e=>{ const c=e.target.closest('.chip'); if(c){ addShop(c.dataset.s, true); toast('買い物リストに追加'); } };
 $('#shopClear').onclick = ()=>{ state.shopping.filter(s=>s.done).forEach(s=>tomb(s.id)); state.shopping=state.shopping.filter(s=>!s.done); save(); renderShop(); };
-// ---------- 価格・内容量の比較計算機（保存しない） ----------
+// ---------- 購入記録と前回との比較 ----------
+// state.purchases: [{id, product, itemName, price, amount, unit, date, mtime}] 在庫とは別に保持し、使い切っても残る
 const PC_UNITS = {g:{kind:'weight',f:1}, kg:{kind:'weight',f:1000}, mL:{kind:'volume',f:1}, L:{kind:'volume',f:1000}, '個':{kind:'個',f:1}, '本':{kind:'本',f:1}, '枚':{kind:'枚',f:1}};
 const PC_BASE = {weight:[100,'100g'], volume:[100,'100mL'], '個':[1,'1個'], '本':[1,'1本'], '枚':[1,'1枚']};
-['pc-u1','pc-u2'].forEach(id=>{ $('#'+id).innerHTML = Object.keys(PC_UNITS).map(u=>`<option>${u}</option>`).join(''); });
+const unitOptions = sel => Object.keys(PC_UNITS).map(u=>`<option ${u===sel?'selected':''}>${u}</option>`).join('');
+$('#b-unit').innerHTML = unitOptions('g');
 function pcFmt(n){ return Number.isInteger(n)? String(n) : '約'+(Math.round(n*10)/10).toLocaleString('ja-JP',{maximumFractionDigits:1}); }
-function pcCalc(){
-  const v=id=>{ const s=$('#'+id).value.trim(); return s===''? null : Number(s); };
-  const p1=v('pc-p1'), p2=v('pc-p2'), a1=v('pc-a1'), a2=v('pc-a2'); const u1=$('#pc-u1').value, u2=$('#pc-u2').value;
-  const out=$('#pc-result'); const lines=[];
-  const bad=[p1,p2,a1,a2].some(x=>x!==null && !isFinite(x));
-  if(bad){ out.style.display='block'; out.innerHTML='<div class="hint" style="color:var(--expired)">数字で入力してください</div>'; return; }
-  if((p1!==null && p1<0)||(p2!==null && p2<0)){ out.style.display='block'; out.innerHTML='<div class="hint" style="color:var(--expired)">価格にマイナスは入力できません</div>'; return; }
-  if(p1!==null && p2!==null){
-    const d=p2-p1;
-    lines.push(`<div><b>商品価格の差</b>：${d===0?'同じ':`今回は前回より <b>${pcFmt(Math.abs(d))}円 ${d<0?'安い':'高い'}</b>`}</div>`);
-  }
+function purchases(){ state.purchases = state.purchases||[]; return state.purchases; }
+function comparable(r){ return r && r.price!=null && isFinite(r.price) && r.price>=0 && r.amount>0 && PC_UNITS[r.unit]; }
+// 「前回」= 購入日が新しい順（同日は記録時刻の新しい順）で、価格と内容量がそろった直近の記録
+function lastPurchase(product, excludeId){ return purchases().filter(r=>r.product===product && r.id!==excludeId && comparable(r)).sort((a,b)=>(b.date||'').localeCompare(a.date||'') || (b.mtime||0)-(a.mtime||0))[0] || null; }
+function productNames(){ const m=new Map(); purchases().filter(comparable).forEach(r=>{ if(!m.has(r.product) || (r.date||'')>m.get(r.product)) m.set(r.product, r.date||''); }); return [...m.entries()].sort((a,b)=>b[1].localeCompare(a[1])).map(e=>e[0]); }
+function unitPrice(r){ const u=PC_UNITS[r.unit]; const [base,label]=PC_BASE[u.kind]; return {v: r.price/(r.amount*u.f)*base, label}; }
+function describe(r){ const up=unitPrice(r); return `${(r.date||'').slice(5).replace('-','/')} ・ ${pcFmt(r.price)}円 / ${pcFmt(r.amount)}${esc(r.unit)}（${up.label}あたり ${pcFmt(up.v)}円）`; }
+// 前回(p1,a1,u1) と 今回(p2,a2,u2) を比較した結果の HTML
+function compareHtml(p1,a1,u1,p2,a2,u2){
+  const lines=[];
+  if([p1,p2,a1,a2].some(x=>x!==null && !isFinite(x))) return '<div class="hint" style="color:var(--expired)">数字で入力してください</div>';
+  if((p1!==null && p1<0)||(p2!==null && p2<0)) return '<div class="hint" style="color:var(--expired)">価格にマイナスは入力できません</div>';
+  if(p1!==null && p2!==null){ const d=p2-p1; lines.push(`<div><b>商品価格の差</b>：${d===0?'同じ':`今回は前回より <b>${pcFmt(Math.abs(d))}円 ${d<0?'安い':'高い'}</b>`}</div>`); }
   if(p1!==null && p2!==null && a1!==null && a2!==null){
-    if(a1<=0 || a2<=0){ lines.push('<div class="hint">内容量は 0 より大きい数で入力してください（単価の計算をしていません）</div>'); }
-    else if(PC_UNITS[u1].kind!==PC_UNITS[u2].kind){ lines.push(`<div class="hint" style="color:var(--urgent)">${u1} と ${u2} は換算できない単位どうしなので、同じ量あたりの比較はしていません。単位をそろえてください。</div>`); }
+    if(a1<=0 || a2<=0) lines.push('<div class="hint">内容量は 0 より大きい数で入力してください（単価の計算をしていません）</div>');
+    else if(PC_UNITS[u1].kind!==PC_UNITS[u2].kind) lines.push(`<div class="hint" style="color:var(--urgent)">${u1} と ${u2} は換算できない単位どうしなので、同じ量あたりの比較はしていません。単位をそろえてください。</div>`);
     else {
       const kind=PC_UNITS[u1].kind, [base,label]=PC_BASE[kind];
-      const q1=a1*PC_UNITS[u1].f, q2=a2*PC_UNITS[u2].f; // 基準単位（g / mL / 個）に換算
-      const up1=p1/q1*base, up2=p2/q2*base;
+      const up1=p1/(a1*PC_UNITS[u1].f)*base, up2=p2/(a2*PC_UNITS[u2].f)*base; // 端数は丸めず計算し、表示時だけ丸める
       lines.push(`<div style="display:flex;gap:12px;margin-top:6px"><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div class="hint" style="margin:0">前回 ${label}あたり</div><b style="font-size:18px">${pcFmt(up1)}円</b></div><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div class="hint" style="margin:0">今回 ${label}あたり</div><b style="font-size:18px">${pcFmt(up2)}円</b></div></div>`);
       const diff=up2-up1;
-      if(Math.abs(diff)<1e-9) lines.push(`<div style="margin-top:6px"><b>同じ量あたりの価格は同じ</b>です</div>`);
+      if(Math.abs(diff)<1e-9) lines.push('<div style="margin-top:6px"><b>同じ量あたりの価格は同じ</b>です</div>');
       else if(up1===0) lines.push(`<div style="margin-top:6px">同じ量あたりでは今回のほうが <b>${pcFmt(Math.abs(diff))}円 高い</b>（前回が0円のため増減率は計算できません）</div>`);
       else { const pct=Math.abs(diff)/up1*100; lines.push(`<div style="margin-top:6px"><b>同じ量あたりでは今回のほうが ${pcFmt(Math.abs(diff))}円・${pcFmt(pct)}％ ${diff<0?'割安':'割高'}</b>${(p2<p1 && diff>0)?'（商品価格は安いですが、量が少ないぶん割高です）':(p2>p1 && diff<0)?'（商品価格は高いですが、量が多いぶん割安です）':''}</div>`); }
     }
-  } else if(p1!==null && p2!==null){ lines.push('<div class="hint">内容量も入れると、同じ量あたりで比べられます</div>'); }
-  out.style.display = lines.length? 'block':'none'; out.innerHTML = lines.join('');
+  } else if(p1!==null && p2!==null) lines.push('<div class="hint">内容量も入れると、同じ量あたりで比べられます</div>');
+  return lines.join('');
 }
-['pc-p1','pc-p2','pc-a1','pc-a2','pc-u1','pc-u2'].forEach(id=>{ $('#'+id).addEventListener('input', pcCalc); $('#'+id).addEventListener('change', pcCalc); });
-$('#pc-reset').onclick = ()=>{ ['pc-p1','pc-p2','pc-a1','pc-a2'].forEach(id=>$('#'+id).value=''); $('#pc-u1').value='g'; $('#pc-u2').value='g'; pcCalc(); };
+// 買い物タブ「前回の購入と比較」
+let cmpProduct='';
+function renderCompare(){
+  const names=productNames(); const body=$('#cmpBody');
+  $('#productList').innerHTML = [...new Set(purchases().map(r=>r.product))].map(n=>`<option value="${esc(n)}">`).join('');
+  if(!names.length){ body.innerHTML='<div class="empty">まだ比較できる購入記録がありません。<br>購入品の登録で「購入価格も記録する」に価格と内容量を入れると、次回から比較できます。</div>'; return; }
+  if(!names.includes(cmpProduct)) cmpProduct=names[0];
+  const keep = {p:$('#cmp-price')?$('#cmp-price').value:'', a:$('#cmp-amount')?$('#cmp-amount').value:'', u:$('#cmp-unit')?$('#cmp-unit').value:null};
+  const last=lastPurchase(cmpProduct);
+  body.innerHTML = `
+    <label for="cmp-product">商品（記録済みのもの）</label>
+    <select id="cmp-product">${names.map(n=>`<option ${n===cmpProduct?'selected':''}>${esc(n)}</option>`).join('')}</select>
+    <div class="panel" style="margin-top:8px"><div class="hint" style="margin:0">前回の購入</div><div><b>${describe(last)}</b></div></div>
+    <div class="row" style="margin-top:8px">
+      <div><label for="cmp-price">今回の購入価格（円・税込）</label><input id="cmp-price" type="number" min="0" step="any" inputmode="decimal" value="${esc(keep.p)}"></div>
+      <div><label for="cmp-amount">今回の内容量（合計）</label><input id="cmp-amount" type="number" min="0" step="any" inputmode="decimal" value="${esc(keep.a)}"></div>
+      <div style="flex:0 0 90px"><label for="cmp-unit">今回の単位</label><select id="cmp-unit">${unitOptions(keep.u||last.unit)}</select></div>
+    </div>
+    <div id="cmp-result" class="panel" style="margin-top:8px;display:none"></div>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn secondary" id="cmp-toReg">この内容で購入品の登録へ</button><button type="button" class="sm" id="cmp-reset" style="flex:0 0 80px">クリア</button></div>
+    <div class="hint">「購入品の登録へ」を押しても、保存を確定するまで購入記録は作られません。</div>`;
+  $('#cmp-product').onchange=e=>{ cmpProduct=e.target.value; renderCompare(); };
+  const calc=()=>{ const v=id=>{ const s=$('#'+id).value.trim(); return s===''?null:Number(s); }; const l=lastPurchase(cmpProduct); const html=compareHtml(l.price,l.amount,l.unit,v('cmp-price'),v('cmp-amount'),$('#cmp-unit').value); const out=$('#cmp-result'); out.style.display=html?'block':'none'; out.innerHTML=html; };
+  ['cmp-price','cmp-amount','cmp-unit'].forEach(id=>{ $('#'+id).addEventListener('input',calc); $('#'+id).addEventListener('change',calc); });
+  $('#cmp-reset').onclick=()=>{ $('#cmp-price').value=''; $('#cmp-amount').value=''; calc(); };
+  $('#cmp-toReg').onclick=()=>{ const rec=lastPurchase(cmpProduct); resetForm(); showTab('add'); $('#f-name').value=rec.itemName||cmpProduct; applyPreset($('#f-name').value); $('#f-name').value=rec.itemName||cmpProduct; $('#buyDetails').open=true; $('#b-product').value=cmpProduct; $('#b-price').value=$('#cmp-price').value; $('#b-amount').value=$('#cmp-amount').value; $('#b-unit').value=$('#cmp-unit').value; renderPrevHint(); $('#form').scrollIntoView({behavior:'smooth',block:'start'}); toast('数量と期限を確認して「冷蔵庫に入れる」を押すと記録されます'); };
+  calc();
+}
+// 登録フォーム内: 入力中の商品名に前回の記録があれば表示
+function renderPrevHint(){ const p=$('#b-product').value.trim(); const el=$('#b-prev'); if(!p){ el.textContent=''; return; } const last=lastPurchase(p, (state.items.find(i=>i.id===$('#f-id').value)||{}).purchaseId); el.innerHTML = last? `前回の購入：${describe(last)}` : 'この商品は初回の記録です（次回から比較できます）'; }
+$('#b-product').addEventListener('input', renderPrevHint);
+$('#f-name').addEventListener('input', ()=>{ if(!$('#b-product').dataset.touched) { $('#b-product').value=$('#f-name').value; renderPrevHint(); } });
+$('#b-product').addEventListener('input', ()=>{ $('#b-product').dataset.touched='1'; });
+// フォームの購入欄を読み取る。何も入っていなければ null、入っていれば検証して返す（不正なら {error}）
+function readBuyFields(){
+  const price=$('#b-price').value.trim(), amount=$('#b-amount').value.trim(), product=$('#b-product').value.trim()||$('#f-name').value.trim();
+  if(price==='' && amount==='') return null;
+  if(price==='' || amount==='') return {error:'購入金額と内容量の両方を入れてください（記録しない場合は両方空のままにします）'};
+  const p=Number(price), a=Number(amount);
+  if(!isFinite(p) || p<0) return {error:'購入金額は 0 以上の数字で入力してください'};
+  if(!isFinite(a) || a<=0) return {error:'内容量は 0 より大きい数字で入力してください'};
+  return {product, price:p, amount:a, unit:$('#b-unit').value, date:$('#b-date').value||todayStr()};
+}
+function resetBuyFields(){ ['b-product','b-price','b-amount'].forEach(id=>$('#'+id).value=''); $('#b-unit').value='g'; $('#b-date').value=todayStr(); $('#b-prev').textContent=''; $('#b-err').style.display='none'; delete $('#b-product').dataset.touched; $('#buyDetails').open=false; }
+function fillBuyFields(rec){ if(!rec) return; $('#buyDetails').open=true; $('#b-product').value=rec.product; $('#b-product').dataset.touched='1'; $('#b-price').value=rec.price; $('#b-amount').value=rec.amount; $('#b-unit').value=rec.unit; $('#b-date').value=rec.date||todayStr(); renderPrevHint(); }
+// 記録・設定タブ: 購入記録の一覧と修正・削除
+let purchaseEditId=null;
+function renderPurchases(){
+  const list=purchases().slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'') || (b.mtime||0)-(a.mtime||0)).slice(0,30);
+  const el=$('#purchaseList'); if(!list.length){ el.innerHTML='<div class="hint">まだ購入記録はありません</div>'; return; }
+  el.innerHTML = list.map(r=>{
+    if(purchaseEditId===r.id) return `<div class="panel" data-pid="${r.id}" style="margin:6px 0">
+      <label>商品名</label><input data-f="product" value="${esc(r.product)}">
+      <div class="row"><div><label>購入金額（円）</label><input data-f="price" type="number" min="0" step="any" value="${r.price}"></div><div><label>購入日</label><input data-f="date" type="date" value="${esc(r.date||'')}"></div></div>
+      <div class="row"><div><label>内容量</label><input data-f="amount" type="number" min="0" step="any" value="${r.amount}"></div><div style="flex:0 0 100px"><label>単位</label><select data-f="unit">${unitOptions(r.unit)}</select></div></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="sm primary" data-pact="save">保存</button><button type="button" class="sm" data-pact="cancel">キャンセル</button></div></div>`;
+    return `<div class="hist" data-pid="${r.id}" style="align-items:center;gap:6px"><span><b>${esc(r.product)}</b><br><span class="hint" style="display:inline">${comparable(r)? describe(r) : (r.date||'')+' ・ 価格か内容量が未入力'}</span></span><span style="white-space:nowrap"><button type="button" class="sm" data-pact="edit">修正</button> <button type="button" class="sm danger" data-pact="del">削除</button></span></div>`;
+  }).join('');
+}
+$('#purchaseList').onclick = e=>{
+  const b=e.target.closest('button[data-pact]'); if(!b) return; const box=e.target.closest('[data-pid]'); const r=purchases().find(x=>x.id===box.dataset.pid); if(!r) return;
+  const act=b.dataset.pact;
+  if(act==='edit'){ purchaseEditId=r.id; renderPurchases(); }
+  else if(act==='cancel'){ purchaseEditId=null; renderPurchases(); }
+  else if(act==='del'){ if(confirm(`「${r.product}」の ${r.date||''} の購入記録を削除しますか？`)){ state.purchases=purchases().filter(x=>x.id!==r.id); tomb(r.id); save(); renderAll(); toast('購入記録を削除しました'); } }
+  else if(act==='save'){
+    const g=f=>box.querySelector(`[data-f=${f}]`).value.trim(); const p=Number(g('price')), a=Number(g('amount'));
+    if(!g('product')){ toast('商品名を入れてください'); return; }
+    if(!isFinite(p)||p<0){ toast('購入金額は 0 以上の数字で'); return; }
+    if(!isFinite(a)||a<=0){ toast('内容量は 0 より大きい数字で'); return; }
+    Object.assign(r,{product:g('product'), price:p, amount:a, unit:box.querySelector('[data-f=unit]').value, date:g('date')||todayStr()}); touch(r); purchaseEditId=null; save(); renderAll(); toast('購入記録を修正しました');
+  }
+};
 
 // 購入品の登録キュー: 買い物項目は「冷蔵庫に保存できた時点」で初めて消す。途中でやめても再読み込みしても残る。
 const PQ_KEY='fridge-pq-v1';
@@ -991,7 +1092,9 @@ function nextFromQueue(){
   const entry = state.shopping.find(s=>s.id===pending[0]);
   const n = entry.name;
   resetForm(); showTab('add'); $('#f-name').value=n; applyPreset(n); if(state.staples.includes(n)) $('#f-staple').checked=true;
-  $('#f-shopid').value=entry.id;
+  $('#f-shopid').value=entry.id; updatePresetCard();
+  if(entry.memo){ $('#shopMemoNote').style.display='block'; $('#shopMemoNote').innerHTML=`📝 買い物メモ：${esc(entry.memo)}`; }
+  $('#b-product').value=n; renderPrevHint();
   const doneCount = pq.total - pending.length;
   $('#formTitle').textContent=`🛒 購入品の登録 ${doneCount+1} / ${pq.total}（未登録 ${pending.length}件）`;
   $('#submitBtn').textContent='冷蔵庫に入れる（次へ）';
@@ -1010,7 +1113,10 @@ function renderResumeBanner(){
   $('#resumeStop').onclick=()=>{ pq=null; savePq(); renderResumeBanner(); toast('買い物リストに残しました'); };
 }
 const origSubmit = $('#form').onsubmit;
+let submitting=false; // 二重クリックで在庫・購入記録が重複しないように
 $('#form').onsubmit = e=>{
+  e.preventDefault();
+  if(submitting) return; submitting=true; setTimeout(()=>{ submitting=false; }, 400);
   const shopId=$('#f-shopid').value;
   const before=state.items.length;
   origSubmit(e);
@@ -1037,8 +1143,8 @@ function renderLog(){
 }
 $('#export').onclick = ()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,1)],{type:'application/json'})); a.download=`fridge-${todayStr()}.json`; a.click(); };
 $('#importBtn').onclick = ()=>$('#importFile').click();
-$('#importFile').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!Array.isArray(s.items)) throw 0; if(confirm('今のデータを読み込んだ内容で置き換えますか？')){ state=Object.assign({items:[],history:[],shopping:[],staples:[]}, s); save(); renderAll(); toast('読み込みました'); } }catch(err){ alert('ファイルの形式が違います'); } }; r.readAsText(f); e.target.value=''; };
-$('#wipe').onclick = ()=>{ if(share){ alert('家族と共有中は削除できません。先に「この端末の共有をやめる」を押してください。'); return; } if(confirm('全データを削除します。よろしいですか？')&&confirm('本当に削除しますか？元に戻せません。')){ state={items:[],history:[],shopping:[],staples:[]}; save(); renderAll(); } };
+$('#importFile').onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!Array.isArray(s.items)) throw 0; if(confirm('今のデータを読み込んだ内容で置き換えますか？')){ state=Object.assign({items:[],history:[],shopping:[],staples:[],purchases:[]}, s); normalizeState(); save(); renderAll(); toast('読み込みました'); } }catch(err){ alert('ファイルの形式が違います'); } }; r.readAsText(f); e.target.value=''; };
+$('#wipe').onclick = ()=>{ if(share){ alert('家族と共有中は削除できません。先に「この端末の共有をやめる」を押してください。'); return; } if(confirm('全データを削除します。よろしいですか？')&&confirm('本当に削除しますか？元に戻せません。')){ state={items:[],history:[],shopping:[],staples:[],purchases:[]}; normalizeState(); save(); renderAll(); } };
 function loadSample(silent){
   const add=(n,d,q,u)=>{ const p=PRESETS.find(x=>x[0]===n)||[n,'その他',7,'個','冷蔵']; state.items.push({id:uid(),name:n,cat:p[1],loc:p[4],qty:q??1,unit:u??p[3],exp:d===null?null:addDays(d),memo:'',staple:['牛乳','卵'].includes(n),added:todayStr()}); };
   add('牛乳',1); add('卵',6,8); add('豆腐',-1); add('鶏もも肉',0,300,'g'); add('キャベツ',4,0.5,'玉'); add('玉ねぎ',20,3); add('にんじん',9,2); add('じゃがいも',25,4); add('もやし',1); add('長ねぎ',3); add('ごはん(冷凍)',30,3); add('味噌',150); add('ヨーグルト',2); add('食パン',2); add('ウインナー',5);
@@ -1140,7 +1246,7 @@ async function rpc(fn, args){
 function genCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const b=new Uint8Array(12); crypto.getRandomValues(b); const s=[...b].map(x=>A[x%32]).join(''); return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12); }
 function normCode(s){ s=(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); return s.length===12? s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8) : null; }
 function canon(v){ if(Array.isArray(v)) return '['+v.map(canon).join(',')+']'; if(v&&typeof v==='object') return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}'; return JSON.stringify(v); }
-function cloudState(s){ return {items:s.items||[], history:s.history||[], shopping:s.shopping||[], staples:s.staples||[], tombstones:s.tombstones||[]}; }
+function cloudState(s){ return {items:s.items||[], history:s.history||[], shopping:s.shopping||[], staples:s.staples||[], purchases:s.purchases||[], tombstones:s.tombstones||[]}; }
 // 2つの状態を合成する: 削除記録(tombstones)を尊重し、同じIDは変更時刻が新しい方を採用
 function mergeStates(local, remote){
   local=cloudState(local); remote=cloudState(remote);
@@ -1153,11 +1259,12 @@ function mergeStates(local, remote){
     items: mergeList(local.items, remote.items, newer),
     history: mergeList(local.history, remote.history, a=>a).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,300),
     shopping: mergeList(local.shopping, remote.shopping, newer),
+    purchases: mergeList(local.purchases, remote.purchases, newer),
     staples: [...new Set([...local.staples, ...remote.staples])],
     tombstones: [...dead].map(([id,t])=>({id,t})).sort((a,b)=>a.t-b.t).slice(-300),
   };
 }
-function adopt(s){ state = Object.assign({items:[],history:[],shopping:[],staples:[]}, s, {settings: state.settings, cooked: state.cooked, shopMemos: state.shopMemos}); saveLocal(); renderAll(); }
+function adopt(s){ state = Object.assign({items:[],history:[],shopping:[],staples:[],purchases:[]}, s, {settings: state.settings, cooked: state.cooked, shopMemos: state.shopMemos}); normalizeState(); saveLocal(); renderAll(); }
 let pushTimer=null, syncing=false, pendingPush=false;
 function setShareStatus(msg){ const el=$('#shareStatus'); if(el) el.textContent=msg; }
 function schedulePush(){ if(!share) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushNow, 800); }
@@ -1210,7 +1317,7 @@ setInterval(()=>{ if(document.visibilityState==='visible') pullNow(); }, 15000);
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') pullNow(); });
 
 // ---------- 全体 ----------
-function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderLog(); renderNotify(); renderShare(); renderResumeBanner(); }
+function renderAll(){ renderSummary(); renderList(); renderPresets(); renderRecipes(); renderShop(); renderCompare(); renderPurchases(); renderLog(); renderNotify(); renderShare(); renderResumeBanner(); }
 load(); fillSelects(); resetForm(); renderAll();
 // マニュアル用スクリーンショット: ?demo=1&tab=add&preset=牛乳 で見本データと画面を指定
 const qs = new URLSearchParams(location.search);
