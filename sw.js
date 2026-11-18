@@ -1,5 +1,5 @@
-// 冷蔵庫管理 Service Worker: オフラインでも開けるようにファイルをキャッシュする
-const CACHE = 'fridge-v15';
+﻿// 蜀ｷ阡ｵ蠎ｫ邂｡逅・Service Worker: 繧ｪ繝輔Λ繧､繝ｳ縺ｧ繧る幕縺代ｋ繧医≧縺ｫ繝輔ぃ繧､繝ｫ繧偵く繝｣繝・す繝･縺吶ｋ
+const CACHE = 'fridge-v16';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -13,8 +13,7 @@ self.addEventListener('activate', e => {
   );
 });
 
-// ネットワーク優先、失敗したらキャッシュ（更新を取りつつオフラインでも動く）
-self.addEventListener('fetch', e => {
+// 繝阪ャ繝医Ρ繝ｼ繧ｯ蜆ｪ蜈医∝､ｱ謨励＠縺溘ｉ繧ｭ繝｣繝・す繝･・域峩譁ｰ繧貞叙繧翫▽縺､繧ｪ繝輔Λ繧､繝ｳ縺ｧ繧ょ虚縺擾ｼ・self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
     fetch(e.request).then(res => {
@@ -25,8 +24,7 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// 通知をタップしたらアプリを開く
-self.addEventListener('notificationclick', e => {
+// 騾夂衍繧偵ち繝・・縺励◆繧峨い繝励Μ繧帝幕縺・self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     const c = list.find(w => 'focus' in w);

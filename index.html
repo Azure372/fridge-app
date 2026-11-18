@@ -226,8 +226,9 @@
         <div id="b-prev" class="hint" style="margin-top:6px"></div>
         <div id="b-err" class="hint" style="display:none;color:var(--expired)"></div>
       </details>
-      <div style="margin-top:14px" class="row">
-        <button type="submit" class="btn" id="submitBtn">冷蔵庫に入れる</button>
+      <div id="destHint" class="hint" style="margin-top:12px"></div>
+      <div style="margin-top:6px" class="row">
+        <button type="submit" class="btn" id="submitBtn" data-mode="add">冷蔵庫に入れる</button>
         <button type="button" class="btn secondary" id="cancelEdit" style="display:none">キャンセル</button>
       </div>
     </form>
@@ -270,7 +271,7 @@
     <div class="hint">各項目の「メモ」で、買う人への伝言（例：1Lを2本、いつもの青いパック）を残せます。家族と共有中は全員に見えます。</div>
     <div id="shopList" style="margin-top:8px"></div>
     <div class="row" style="margin-top:10px">
-      <button class="btn secondary" id="shopToFridge">チェック済みを冷蔵庫に入れる</button>
+      <button class="btn secondary" id="shopToFridge">チェック済みを登録する（冷蔵庫・ストック）</button>
       <button class="btn secondary" id="shopClear">チェック済みを消す</button>
     </div>
   </div>
@@ -376,7 +377,7 @@
     </details>
     <details>
       <summary>冷蔵庫以外の在庫（ストック）</summary>
-      <p>調味料・お菓子・飲み物の買い置き・日用品など、冷蔵庫に入っていないものも同じように登録できます。保存場所を「常温」「お菓子」「日用品」にすると<b>ストック</b>として扱われ、一覧の上の「🗄️ ストック」で冷蔵庫の中身と分けて見られます。</p>
+      <p>調味料・お菓子・飲み物の買い置き・日用品など、冷蔵庫に入っていないものも同じように登録できます。保存場所を「常温」「お菓子」「日用品」にすると<b>ストック</b>として扱われ（登録ボタンも「ストックに入れる」に変わります）、一覧の上の「🗄️ ストック」で冷蔵庫の中身と分けて見られます。</p>
       <ul>
         <li>追加タブには「調味料」「お菓子」「飲み物」「日用品」の定番が入っています。期限がないもの（砂糖・ラップなど）は期限なしで登録されます。</li>
         <li>使ったら「減らす」で本数や袋数を減らします。残りが1以下になると、買い物タブの「残りわずかのストック」に出るので、タップで買い物リストに入れられます。</li>
@@ -396,7 +397,7 @@
       <p><b>手入力</b>：追加タブを開くとすぐ上に入力フォームがあります。名前を打つと候補が出ます。期限はカレンダーか「明日」「1週間」などのボタンで。調味料など期限がないものは「期限なし」。</p>
       <p><b>よく買うものから</b>：フォームの下の「よく買うものから選ぶ」で検索するか「候補一覧を開く」から食材をタップすると、上のフォームに名前・分類・単位・期限の目安が入ります。</p>
       <p><b>常備品</b>にチェックすると、使い切ったときに買い物リストへ自動で入ります（牛乳・卵など）。</p>
-      <p><b>買い物リストから</b>：買ったものにチェック →「チェック済みを冷蔵庫に入れる」で、1つずつ登録フォームが開きます。</p>
+      <p><b>買い物リストから</b>：買ったものにチェック →「チェック済みを登録する」で、1つずつ登録フォームが開きます。</p>
     </details>
     <details>
       <summary>一覧の色とボタン</summary>
@@ -435,7 +436,7 @@
       <summary>作った料理の残り（作り置き）</summary>
       <p>カレーや煮物など、作って残った料理も「<b>作った料理</b>」として冷蔵庫に入れておけます。単位は「食分」で、食べたら1食分ずつ減らします。</p>
       <ul>
-        <li><b>レシピから</b>：レシピの「作った」を押すと、続けて「残りを登録」の画面が開きます。何食分残っているかと、冷蔵（目安3日）か冷凍（目安1か月）かを選んで「残りを冷蔵庫に入れる」。残っていなければ「残っていない（登録しない）」。</li>
+        <li><b>レシピから</b>：レシピの「作った」を押すと、続けて「残りを登録」の画面が開きます。何食分残っているかと、冷蔵（目安3日）か冷凍（目安1か月）かを選んで「残りを冷蔵庫に入れる」（保存場所がストックなら「残りをストックに入れる」）。残っていなければ「残っていない（登録しない）」。</li>
         <li><b>自分で作った料理</b>：追加タブの先頭「作った料理の残り」で、最近作った料理をタップするか「料理名を入力して登録」。</li>
         <li><b>食べたとき</b>：一覧の「食べた」、またはレシピ画面の先頭に出る「作った料理の残り（先に食べる）」の「食べた（−1食分）」。全部食べたら「全部食べた」。</li>
       </ul>
@@ -443,7 +444,7 @@
     </details>
     <details>
       <summary>買い物リストと常備品</summary>
-      <p>自分で入力する、一覧の「買い物リストへ」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを冷蔵庫に入れる」で1件ずつ登録します（「購入品の登録 1 / 3」のように進み具合が出ます）。途中で「買い物リストに戻る」を押したりアプリを閉じたりしても、まだ保存していない項目はリストに残り、次に開いたとき「続ける」から再開できます。</p>
+      <p>自分で入力する、一覧の「買い物リストへ」、レシピの「足りないものを買い物リストへ」の3つから入ります。買い物中はチェックを入れ、帰ったら「チェック済みを登録する」で1件ずつ登録します（「購入品の登録 1 / 3」のように進み具合が出ます）。途中で「買い物リストに戻る」を押したりアプリを閉じたりしても、まだ保存していない項目はリストに残り、次に開いたとき「続ける」から再開できます。</p>
       <p>常備品を使い切ると自動でリストに入り、「切れている常備品」にも表示されます。常備品をやめるには、一覧の「編集」でチェックを外して保存します。</p>
       <p><b>買い物メモ</b>：各項目の「メモ」で、買う人への伝言（例：1Lを2本、いつもの青いパック）を残せます。品名の下に表示され、家族と共有中は全員に見えます。同じ名前を次に買い物リストへ入れたときは前回のメモを引き継ぎます（メモを消せば引き継ぎも消えます）。</p>
       <p><b>購入価格の記録と前回との比較</b>：登録フォームの「購入価格も記録する（任意）」に商品名・購入金額（税込・合計）・内容量（合計）・購入日を入れると記録されます。食材を選ぶと、内容量と単位は前回の購入記録（同じ商品名、なければ同じ食材名）から自動で入り、記録がなければ食材ごとの既定の単位（牛乳は mL、肉は g、卵は個 など）になります。自動で入った値はそのまま変更でき、手で変えた欄は上書きされません。在庫の数量・単位とは別の欄で、購入金額を空のままにすれば記録はされません。次の買い物では、買い物タブの「前回の購入と比較」で商品を選ぶと前回の値が自動で出て、今回の価格と内容量を入れるだけで「何円・何％割安／割高」が分かります（比較画面で入力しただけでは記録されません）。記録は在庫を使い切っても残り、「記録・設定」タブで修正・削除できます。商品名は「〇〇牛乳 1L」のようにブランドで区別し、同じ商品の容量違いは内容量で比較します。g と kg、mL と L は換算しますが、g と mL のように換算できない単位どうしは比較しません。</p>
@@ -784,7 +785,7 @@ function applyPreset(name){
   $('#expHint').textContent= p[2]==null? '（期限なし。あれば入力）' : `（目安: ${p[2]}日）`;
   $('#f-staple').checked = state.staples.includes(p[0]);
   if(!$('#b-product').dataset.touched) $('#b-product').value=p[0];
-  renderPrevHint();
+  renderPrevHint(); updateSubmitLabel();
 }
 $('#f-name').addEventListener('change', e=>{
   const p = PRESETS.find(x=>x[0]===e.target.value);
@@ -792,13 +793,23 @@ $('#f-name').addEventListener('change', e=>{
   if(state.staples.includes(e.target.value)) $('#f-staple').checked=true;
 });
 document.querySelectorAll('#tab-add .chip[data-days]').forEach(c=>c.onclick=()=>{ $('#f-exp').value = c.dataset.days===''?'':addDays(+c.dataset.days); });
-function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#qtyErr').style.display='none'; $('#shopMemoNote').style.display='none'; if(typeof resetBuyFields==='function') resetBuyFields(); if($('#presetCard')) updatePresetCard(); $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='食材を追加'; $('#submitBtn').textContent='冷蔵庫に入れる'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
+function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#qtyErr').style.display='none'; $('#shopMemoNote').style.display='none'; if(typeof resetBuyFields==='function') resetBuyFields(); if($('#presetCard')) updatePresetCard(); $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='冷蔵庫・ストックに追加'; $('#submitBtn').dataset.mode='add'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
+// 登録ボタンの文言: 保存場所が冷蔵・冷凍・野菜室なら「冷蔵庫に入れる」、常温・お菓子・日用品なら「ストックに入れる」
+// mode: add（通常）/ queue（購入品の登録）/ leftover（作った料理の残り）/ edit（編集）
+const destOf = loc => FRIDGE_LOCS.includes(loc)? '冷蔵庫' : 'ストック';
+function setSubmitMode(mode){ $('#submitBtn').dataset.mode=mode; updateSubmitLabel(); }
+function updateSubmitLabel(){
+  const b=$('#submitBtn'), mode=b.dataset.mode||'add', dest=destOf($('#f-loc').value);
+  b.textContent = mode==='edit'? '保存' : mode==='queue'? `${dest}に入れる（次へ）` : mode==='leftover'? `残りを${dest}に入れる` : `${dest}に入れる`;
+  const h=$('#destHint'); if(h) h.textContent = mode==='edit'? '' : `保存場所「${$('#f-loc').value}」なので${dest === '冷蔵庫'? '🧊 冷蔵庫' : '🗄️ ストック'}に入ります（保存場所を変えると切り替わります）`;
+}
 function updateLeftoverBar(){
   const on = $('#f-cat').value===COOKED;
   $('#leftoverBar').style.display = on? 'block':'none';
   const q=+$('#f-qty').value, loc=$('#f-loc').value;
   document.querySelectorAll('#servingChips .chip').forEach(c=>c.classList.toggle('on', on && +c.dataset.serv===q));
   document.querySelectorAll('#keepChips .chip').forEach(c=>c.classList.toggle('on', on && c.dataset.keep===loc));
+  updateSubmitLabel();
 }
 $('#f-cat').addEventListener('change', ()=>{
   if($('#f-cat').value===COOKED && !$('#f-id').value){ $('#f-unit').value='食分'; $('#f-loc').value='冷蔵'; $('#f-exp').value=addDays(3); $('#expHint').textContent='（冷蔵は3日、冷凍は1か月が目安）'; if(!$('#f-memo').value) $('#f-memo').value=`${todayStr().slice(5).replace('-','/')}に作った`; }
@@ -813,7 +824,7 @@ function offerLeftover(name){
   resetForm(); showTab('add');
   $('#f-name').value=name; $('#f-cat').value=COOKED; $('#f-unit').value='食分'; $('#f-qty').value=2; $('#f-loc').value='冷蔵'; $('#f-exp').value=addDays(3);
   $('#expHint').textContent='（冷蔵は3日、冷凍は1か月が目安）'; $('#f-memo').value=`${todayStr().slice(5).replace('-','/')}に作った`;
-  $('#formTitle').textContent=`🍲 「${name}」の残りを登録`; $('#submitBtn').textContent='残りを冷蔵庫に入れる';
+  $('#formTitle').textContent=`🍲 「${name}」の残りを登録`; $('#submitBtn').dataset.mode='leftover';
   $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='残っていない（登録しない）';
   updateLeftoverBar();
   $('#form').scrollIntoView({behavior:'smooth', block:'start'});
@@ -822,7 +833,7 @@ function recordCooked(name){ state.cooked=(state.cooked||[]).filter(c=>c.name!==
 function editItem(item){
   showTab('add');
   $('#f-id').value=item.id; $('#f-name').value=item.name; $('#f-cat').value=item.cat; $('#f-loc').value=item.loc; $('#f-qty').value=item.qty; $('#f-unit').value=item.unit; $('#f-exp').value=item.exp||''; $('#f-memo').value=item.memo||''; $('#f-staple').checked=!!item.staple;
-  $('#formTitle').textContent=`食材を編集：${item.name}`; $('#submitBtn').textContent='保存'; $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='キャンセル';
+  $('#formTitle').textContent=`食材を編集：${item.name}`; $('#submitBtn').dataset.mode='edit'; $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='キャンセル';
   $('#qtyErr').style.display='none';
   resetBuyFields(); const rec=purchases().find(r=>r.id===item.purchaseId); if(rec) fillBuyFields(rec); else { $('#b-product').value=item.name; renderPrevHint(); }
   updateLeftoverBar(); updatePresetCard();
@@ -863,7 +874,7 @@ $('#form').onsubmit = e=>{
   state.items.push(touch(Object.assign({id:uid(), added:todayStr()}, data)));
   // 買い物リストに同名があればチェック済みに
   state.shopping.forEach(s=>{ if(s.name===data.name && !s.done){ s.done=true; touch(s); } });
-  save(); toast(buy? `${data.name} を追加し、購入価格を記録しました` : `${data.name} を追加しました`);
+  save(); toast(buy? `${data.name} を${destOf(data.loc)}に追加し、購入価格を記録しました` : `${data.name} を${destOf(data.loc)}に追加しました`);
   resetForm(); renderAll(); $('#f-name').focus();
 };
 
@@ -1042,7 +1053,7 @@ function renderCompare(){
   const calc=()=>{ const v=id=>{ const s=$('#'+id).value.trim(); return s===''?null:Number(s); }; const l=lastPurchase(cmpProduct); const html=compareHtml(l.price,l.amount,l.unit,v('cmp-price'),v('cmp-amount'),$('#cmp-unit').value); const out=$('#cmp-result'); out.style.display=html?'block':'none'; out.innerHTML=html; };
   ['cmp-price','cmp-amount','cmp-unit'].forEach(id=>{ $('#'+id).addEventListener('input',calc); $('#'+id).addEventListener('change',calc); });
   $('#cmp-reset').onclick=()=>{ $('#cmp-price').value=''; $('#cmp-amount').value=''; calc(); };
-  $('#cmp-toReg').onclick=()=>{ const rec=lastPurchase(cmpProduct); resetForm(); showTab('add'); $('#f-name').value=rec.itemName||cmpProduct; applyPreset($('#f-name').value); $('#f-name').value=rec.itemName||cmpProduct; $('#buyDetails').open=true; $('#b-product').value=cmpProduct; $('#b-price').value=$('#cmp-price').value; $('#b-amount').value=$('#cmp-amount').value; $('#b-unit').value=$('#cmp-unit').value; $('#b-unit').dataset.manual='1'; if($('#b-amount').value.trim()) $('#b-amount').dataset.manual='1'; renderPrevHint(); $('#form').scrollIntoView({behavior:'smooth',block:'start'}); toast('数量と期限を確認して「冷蔵庫に入れる」を押すと記録されます'); };
+  $('#cmp-toReg').onclick=()=>{ const rec=lastPurchase(cmpProduct); resetForm(); showTab('add'); $('#f-name').value=rec.itemName||cmpProduct; applyPreset($('#f-name').value); $('#f-name').value=rec.itemName||cmpProduct; $('#buyDetails').open=true; $('#b-product').value=cmpProduct; $('#b-price').value=$('#cmp-price').value; $('#b-amount').value=$('#cmp-amount').value; $('#b-unit').value=$('#cmp-unit').value; $('#b-unit').dataset.manual='1'; if($('#b-amount').value.trim()) $('#b-amount').dataset.manual='1'; renderPrevHint(); $('#form').scrollIntoView({behavior:'smooth',block:'start'}); toast(`数量と期限を確認して「${$('#submitBtn').textContent}」を押すと記録されます`); };
   calc();
 }
 // 登録フォーム内: 入力中の商品名に前回の記録があれば表示
@@ -1136,7 +1147,7 @@ function nextFromQueue(){
   $('#b-product').value=n; renderPrevHint();
   const doneCount = pq.total - pending.length;
   $('#formTitle').textContent=`🛒 購入品の登録 ${doneCount+1} / ${pq.total}（未登録 ${pending.length}件）`;
-  $('#submitBtn').textContent='冷蔵庫に入れる（次へ）';
+  setSubmitMode('queue');
   $('#cancelEdit').style.display='block'; $('#cancelEdit').textContent='買い物リストに戻る（あとで登録）';
   renderResumeBanner();
   $('#form').scrollIntoView({behavior:'smooth', block:'start'});
