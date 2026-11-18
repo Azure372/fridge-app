@@ -114,6 +114,21 @@
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:20;display:flex;align-items:center;gap:12px;max-width:92vw}
   #toast.show.action{pointer-events:auto}
   #toast button{background:#fbbf24;color:#111827;border:0;border-radius:999px;padding:5px 12px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+  .sheet{position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:15;display:none;align-items:flex-end;justify-content:center}
+  .sheet.show{display:flex}
+  .sheet .box{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
+  .sheet h2{font-size:17px;margin:0 0 4px}
+  .crow{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px}
+  .crow.need{border-color:var(--urgent);background:var(--urgent-bg)}
+  .crow .nm{font-weight:700;font-size:15px}
+  .crow select{width:100%;margin-top:6px;padding:8px;font-size:14px}
+  .crow .btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .crow .btns button{font-size:14px;padding:8px 11px}
+  .crow .btns button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .crow .inp{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .crow .inp input{width:96px;padding:8px;font-size:15px}
+  .crow .line{margin-top:8px;font-size:14px;padding:6px 8px;background:var(--bg);border-radius:8px}
+  .crow .err{color:var(--expired);font-size:13px;margin-top:4px}
   .panel{margin-top:8px;background:var(--bg);border-radius:10px;padding:10px}
   .panel .hint{margin:0 0 6px}
   .panel .btns{display:flex;flex-wrap:wrap;gap:6px}
@@ -426,7 +441,7 @@
         <li><b>材料がそろっている</b>：主な材料がすべて家にある料理だけ。</li>
         <li><b>在庫を1つでも使う（全部）</b>：材料が1つでもある料理をすべて。「不足 2」のように足りない数が出ます。</li>
         <li>照合は材料の<b>名前</b>だけで行い、数量や調味料は見ていません。</li>
-        <li><b>作った</b>：使った食材をまとめて「使い切った」にします。一部だけ使ったときはキャンセルして一覧で −1 を。</li>
+        <li><b>作った</b>：使った量を食材ごとに選ぶ画面が開きます。「2個」などの量、「半分」（今残っている量の半分）、使った量の直接入力、「全部使った」、「今回は減らさない」から選び、「在庫 → 使用 → 残り」を確かめて「使用量を確定」でまとめて反映します。同じ食材の在庫が複数あれば、どれから減らすかを選べます（初期は期限が近いもの）。確定するまで在庫は変わらず、キャンセルでは何も変わりません。確定後は6秒間「元に戻す」ができ、続けて「料理は残っていますか？」で残りを登録するか終わるかを選べます。</li>
         <li><b>足りないものを買い物リストへ</b>：ない材料を買い物リストに入れます。</li>
         <li><b>AIに聞く用の文章をコピー</b>：期限が近い食材を入れた質問文をコピーし、ChatGPT や Claude に貼ると別の提案がもらえます。</li>
       </ul>
@@ -436,7 +451,7 @@
       <summary>作った料理の残り（作り置き）</summary>
       <p>カレーや煮物など、作って残った料理も「<b>作った料理</b>」として冷蔵庫に入れておけます。単位は「食分」で、食べたら1食分ずつ減らします。</p>
       <ul>
-        <li><b>レシピから</b>：レシピの「作った」を押すと、続けて「残りを登録」の画面が開きます。何食分残っているかと、冷蔵（目安3日）か冷凍（目安1か月）かを選んで「残りを冷蔵庫に入れる」（保存場所がストックなら「残りをストックに入れる」）。残っていなければ「残っていない（登録しない）」。</li>
+        <li><b>レシピから</b>：レシピの「作った」で使った量を確定したあと、「料理は残っていますか？」で「残りを登録する」を押すと登録画面が開きます。何食分残っているかと、冷蔵（目安3日）か冷凍（目安1か月）かを選んで「残りを冷蔵庫に入れる」（保存場所がストックなら「残りをストックに入れる」）。残っていなければ「残っていない（登録しない）」。</li>
         <li><b>自分で作った料理</b>：追加タブの先頭「作った料理の残り」で、最近作った料理をタップするか「料理名を入力して登録」。</li>
         <li><b>食べたとき</b>：一覧の「食べた」、またはレシピ画面の先頭に出る「作った料理の残り（先に食べる）」の「食べた（−1食分）」。全部食べたら「全部食べた」。</li>
       </ul>
@@ -488,6 +503,7 @@
 </section>
 </main>
 <button class="fab" id="fab" title="追加">＋</button>
+<div id="cookSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="cookTitle"><div class="box" id="cookBox"></div></div>
 <div id="toast"></div>
 
 <script>
@@ -723,14 +739,19 @@ $('#itemList').onclick = e=>{
   else if(act==='shop'){ addShop(item.name); renderList(); toast(`買い物リストに「${item.name}」を入れました（在庫はそのまま）`); }
   else if(act==='edit'){ editItem(item); }
 };
-function finish(item, type){
-  openPanel=null;
+// 在庫を一覧から消して履歴に残す（保存・描画はしない）。戻すための情報を返す
+function finishCore(item, type){
   const hist={id:uid(), name:item.name, cat:item.cat, type, date:todayStr(), exp:item.exp||null};
   state.items = state.items.filter(i=>i.id!==item.id); tomb(item.id);
   state.history.unshift(hist);
   state.history = state.history.slice(0,300);
   let shopEntry=null;
   if(item.staple){ if(!state.staples.includes(item.name)) state.staples.push(item.name); shopEntry=addShop(item.name, true); }
+  return {hist, shopEntry};
+}
+function finish(item, type){
+  openPanel=null;
+  const {hist, shopEntry} = finishCore(item, type);
   save(); renderAll();
   toast(type==='waste'? `${item.name} を廃棄として記録しました` : `${item.name} を使い切りました`, {label:'元に戻す', fn:()=>{
     state.tombstones=(state.tombstones||[]).filter(t=>t.id!==item.id);
@@ -919,15 +940,138 @@ $('#recipeList').onclick = e=>{
   const b=e.target.closest('button'); const rc=e.target.closest('.recipe'); if(!b||!rc) return;
   const x=$('#recipeList')._list[+rc.dataset.idx];
   if(b.dataset.act==='buy'){ x.missing.forEach(m=>addShop(m)); toast('買い物リストに追加しました'); }
-  if(b.dataset.act==='cook'){
-    const names = x.used.map(it=>it.name).join('、');
-    if(confirm(`「${x.r.n}」を作りました。\n\n使った食材: ${names}\n\nこれらを全部「使い切った」にしますか？\n（キャンセル → 食材は残したまま、一覧で「減らす」から使った分だけ減らせます）`)){
-      x.used.forEach(it=>finish(it,'used'));
-    }
-    recordCooked(x.r.n); save();
-    offerLeftover(x.r.n);
-  }
+  if(b.dataset.act==='cook') openCook(x.r);
 };
+
+// ---------- 「作った」→ 使った量の確認（下書き。確定するまで在庫は変えない） ----------
+// cookDraft = {name, step:'edit'|'done', rows:[{label, cands:[id], itemId, mode:null|'amount'|'all'|'none', use:'', err}], missing:[label], undo}
+let cookDraft=null, cookBusy=false;
+const expOrder = it => it.exp || '9999-12-31';
+function cookItem(row){ return state.items.find(i=>i.id===row.itemId) || null; }
+function openCook(recipe){
+  const rows=[], missing=[];
+  recipe.i.forEach(([label,keys])=>{
+    const cands = matchItems(keys).filter(it=>!isCooked(it)).sort((a,b)=>expOrder(a).localeCompare(expOrder(b)));
+    if(cands.length) rows.push({label, cands:cands.map(c=>c.id), itemId:cands[0].id, mode:null, use:'', err:''}); else missing.push(label);
+  });
+  cookDraft={name:recipe.n, step:'edit', rows, missing, showNeed:false};
+  renderCook(); $('#cookSheet').classList.add('show'); document.body.style.overflow='hidden';
+}
+function closeCook(){ cookDraft=null; $('#cookSheet').classList.remove('show'); document.body.style.overflow=''; }
+// 行の使用量（数値）。未指定・不正は null
+function rowUse(row){
+  const it=cookItem(row); if(!it) return null;
+  if(row.mode==='none') return 0;
+  if(row.mode==='all') return it.qty;
+  if(row.mode==='amount'){ const s=String(row.use).trim(); if(s==='') return null; const n=Number(s); if(!isFinite(n)||n<0||n>it.qty+1e-9) return null; return n; }
+  return null;
+}
+function rowErr(row){
+  const it=cookItem(row); if(!it) return 'この在庫は見つかりません（他の端末で消された可能性があります）';
+  if(row.mode!=='amount') return '';
+  const s=String(row.use).trim(); if(s==='') return '';
+  const n=Number(s);
+  if(!isFinite(n)) return '数字で入力してください';
+  if(n<0) return 'マイナスは入力できません';
+  if(n>it.qty+1e-9) return `在庫（${fmtQty(it.qty)}${it.unit}）より多くは使えません。全部使った場合は「全部使った」を選んでください`;
+  return '';
+}
+function rowLine(row){
+  const it=cookItem(row); if(!it) return '';
+  const u=esc(it.unit), cur=`在庫 <b>${fmtQty(it.qty)}${u}</b>`;
+  if(row.mode==='none') return `${cur} → 今回は減らさない`;
+  const n=rowUse(row);
+  if(n===null) return `${cur} → 使用量：<b style="color:var(--urgent)">未指定</b>`;
+  const rest=+(it.qty-n).toFixed(2);
+  if(n===0) return `${cur} → 使用 0${u} → 減らしません`;
+  return `${cur} → 使用 <b>${fmtQty(n)}${u}</b> → 残り <b>${fmtQty(Math.max(0,rest))}${u}</b>${rest<=0?'（使い切り）':''}`;
+}
+function candLabel(it){ return `${it.name} ${fmtQty(it.qty)}${it.unit}・${it.exp? it.exp.slice(5).replace('-','/')+'まで' : '期限なし'}（${it.loc}）`; }
+function renderCook(){
+  const d=cookDraft, box=$('#cookBox'); if(!d) return;
+  if(d.step==='done'){
+    box.innerHTML=`<h2 id="cookTitle">🍳 「${esc(d.name)}」を記録しました</h2>
+      <div class="hint">${d.summary}</div>
+      <div class="sub" style="margin-top:12px;font-weight:700">料理は残っていますか？</div>
+      <div class="hint">残っていれば、作った料理として何食分残っているかを登録できます（材料の残量とは別に管理します）。</div>
+      <div class="row" style="margin-top:10px"><button class="btn" data-cact="leftover">残りを登録する</button><button class="btn secondary" data-cact="close">残っていない（終わる）</button></div>`;
+    return;
+  }
+  const need=d.rows.filter(r=>rowUse(r)===null);
+  box.innerHTML=`<h2 id="cookTitle">🍳 「${esc(d.name)}」で使った量</h2>
+    <div class="hint">食材ごとに使った量を選び、最後に「使用量を確定」を押してください。確定するまで在庫は変わりません。「半分」は今残っている量の半分です。分量はレシピからは自動で入れていません。</div>
+    ${d.rows.map((r,i)=>{ const it=cookItem(r); const cands=r.cands.map(id=>state.items.find(x=>x.id===id)).filter(Boolean);
+      if(!it) return `<div class="crow need" data-row="${i}"><div class="nm">${esc(r.label)}</div><div class="err">${rowErr(r)}</div></div>`;
+      const steps=decSteps(it).filter(s=>s<it.qty);
+      const pr=(m,v)=> (r.mode===m && (v===undefined || String(r.use)===String(v)))? 'true':'false';
+      return `<div class="crow${d.showNeed && rowUse(r)===null?' need':''}" data-row="${i}">
+        <div class="nm">${esc(r.label)}</div>
+        ${cands.length>1? `<label class="hint" style="margin:4px 0 0">どの在庫から減らすか（${cands.length}件あります）</label><select data-role="pick">${cands.map(c=>`<option value="${c.id}" ${c.id===r.itemId?'selected':''}>${esc(candLabel(c))}</option>`).join('')}</select>` : `<div class="hint" style="margin:2px 0 0">${esc(candLabel(it))}</div>`}
+        <div class="btns">
+          ${steps.map(s=>`<button type="button" class="sm" data-cact="set" data-n="${s}" aria-pressed="${pr('amount',s)}">${s}${esc(it.unit)}</button>`).join('')}
+          <button type="button" class="sm" data-cact="half" aria-pressed="${pr('amount', +(it.qty/2).toFixed(2))}">半分（${fmtQty(+(it.qty/2).toFixed(2))}${esc(it.unit)}）</button>
+          <button type="button" class="sm" data-cact="all" aria-pressed="${pr('all')}">全部使った</button>
+          <button type="button" class="sm" data-cact="none" aria-pressed="${pr('none')}">今回は減らさない</button>
+        </div>
+        <div class="inp"><label class="hint" style="margin:0" for="cuse${i}">使った量を入力</label><input id="cuse${i}" type="number" min="0" step="any" inputmode="decimal" data-role="use" value="${r.mode==='amount'? esc(String(r.use)) : ''}" placeholder="例 ${steps[0]||fmtQty(it.qty/2)}"><span>${esc(it.unit)}</span></div>
+        <div class="err" data-role="err">${rowErr(r)}</div>
+        <div class="line" data-role="line">${rowLine(r)}</div>
+      </div>`; }).join('')}
+    ${d.missing.length? `<div class="hint" style="margin-top:8px">在庫にない材料（減らすものなし）：${d.missing.map(esc).join('、')}</div>`:''}
+    <div id="cookNeed" class="hint" style="margin-top:10px;color:var(--urgent);${d.showNeed && need.length?'':'display:none'}">使用量が未指定の食材が ${need.length} 件あります。量を選ぶか「今回は減らさない」を選んでください。<button type="button" class="sm" data-cact="restnone" style="margin-left:4px">未指定はすべて減らさない</button></div>
+    <div class="row" style="margin-top:12px"><button type="button" class="btn" data-cact="commit">使用量を確定</button><button type="button" class="btn secondary" data-cact="close">キャンセル（何も変えない）</button></div>`;
+}
+function refreshCookRow(i){ const el=document.querySelector(`#cookBox .crow[data-row="${i}"]`); const r=cookDraft.rows[i]; if(!el) return; el.querySelector('[data-role=err]').textContent=rowErr(r); el.querySelector('[data-role=line]').innerHTML=rowLine(r); el.querySelectorAll('.btns button').forEach(b=>b.setAttribute('aria-pressed','false')); if(cookDraft.showNeed && rowUse(r)!==null) el.classList.remove('need'); }
+$('#cookBox').addEventListener('input', e=>{
+  if(!cookDraft || e.target.dataset.role!=='use') return;
+  const i=+e.target.closest('.crow').dataset.row, r=cookDraft.rows[i];
+  r.use=e.target.value; r.mode = e.target.value.trim()===''? null : 'amount'; refreshCookRow(i);
+});
+$('#cookBox').addEventListener('change', e=>{
+  if(!cookDraft || e.target.dataset.role!=='pick') return;
+  const r=cookDraft.rows[+e.target.closest('.crow').dataset.row]; r.itemId=e.target.value; r.mode=null; r.use=''; renderCook();
+});
+$('#cookSheet').addEventListener('click', e=>{ if(e.target.id==='cookSheet' && cookDraft && cookDraft.step==='edit') closeCook(); });
+$('#cookBox').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-cact]'); if(!b || !cookDraft) return;
+  const act=b.dataset.cact, rowEl=b.closest('.crow'), r=rowEl? cookDraft.rows[+rowEl.dataset.row] : null, it=r? cookItem(r) : null;
+  if(act==='close'){ closeCook(); return; }
+  if(act==='leftover'){ const n=cookDraft.name; closeCook(); offerLeftover(n); return; }
+  if(r && !it) return;
+  if(act==='set'){ r.mode='amount'; r.use=b.dataset.n; }
+  else if(act==='half'){ r.mode='amount'; r.use=String(+(it.qty/2).toFixed(2)); } // 下書きの使用量を選ぶだけ。何度押しても同じ値
+  else if(act==='all'){ r.mode='all'; r.use=''; }
+  else if(act==='none'){ r.mode='none'; r.use=''; }
+  else if(act==='restnone'){ cookDraft.rows.forEach(x=>{ if(rowUse(x)===null && cookItem(x) && !rowErr(x)) { x.mode='none'; x.use=''; } }); }
+  else if(act==='commit'){ commitCook(); return; }
+  renderCook();
+});
+function commitCook(){
+  const d=cookDraft; if(!d || d.step!=='edit' || cookBusy) return;
+  // 検証: 未指定・不正があれば確定しない。同じ在庫を複数の材料で使う場合は合計で在庫以内
+  if(d.rows.some(r=>rowErr(r))){ d.showNeed=true; renderCook(); toast('入力を確認してください'); return; }
+  if(d.rows.some(r=>rowUse(r)===null)){ d.showNeed=true; renderCook(); const n=$('#cookNeed'); if(n) n.scrollIntoView({block:'center'}); return; }
+  const total={}; d.rows.forEach(r=>{ total[r.itemId]=(total[r.itemId]||0)+rowUse(r); });
+  for(const id in total){ const it=state.items.find(i=>i.id===id); if(total[id]>it.qty+1e-9){ d.showNeed=true; renderCook(); toast(`${it.name} は合計で在庫（${fmtQty(it.qty)}${it.unit}）を超えています`); return; } }
+  cookBusy=true; setTimeout(()=>{ cookBusy=false; }, 600);
+  const undo=[], lines=[];
+  for(const id in total){
+    const it=state.items.find(i=>i.id===id); const use=total[id]; if(!(use>0)) continue;
+    const rest=+(it.qty-use).toFixed(2);
+    if(rest<=0){ const res=finishCore(it,'used'); undo.push({kind:'fin', item:it, ...res}); lines.push(`${esc(it.name)}：使い切り`); }
+    else { undo.push({kind:'qty', item:it, prev:it.qty}); it.qty=rest; touch(it); lines.push(`${esc(it.name)}：${fmtQty(use)}${esc(it.unit)} 使用 → 残り ${fmtQty(rest)}${esc(it.unit)}`); }
+  }
+  recordCooked(d.name); save(); renderAll();
+  d.step='done'; d.summary = lines.length? lines.join('<br>') : '在庫は減らしていません。';
+  renderCook();
+  if(undo.length) toast(`「${d.name}」の使用量を反映しました`, {label:'元に戻す', fn:()=>{
+    undo.forEach(u=>{
+      if(u.kind==='qty'){ const cur=state.items.find(i=>i.id===u.item.id); if(cur){ cur.qty=u.prev; touch(cur); } }
+      else { state.tombstones=(state.tombstones||[]).filter(t=>t.id!==u.item.id); touch(u.item); if(!state.items.some(i=>i.id===u.item.id)) state.items.push(u.item); state.history=state.history.filter(h=>h.id!==u.hist.id); if(u.shopEntry){ state.shopping=state.shopping.filter(s=>s.id!==u.shopEntry.id); tomb(u.shopEntry.id); } }
+    });
+    save(); renderAll(); toast('使用量の反映を取り消しました');
+  }});
+}
 // 作り置き（作った料理）の「食べた」
 $('#recipeList').addEventListener('click', e=>{
   const b=e.target.closest('button[data-eat]'); if(!b) return;

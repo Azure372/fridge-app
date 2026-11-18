@@ -1,5 +1,5 @@
 ﻿// 蜀ｷ阡ｵ蠎ｫ邂｡逅・Service Worker: 繧ｪ繝輔Λ繧､繝ｳ縺ｧ繧る幕縺代ｋ繧医≧縺ｫ繝輔ぃ繧､繝ｫ繧偵く繝｣繝・す繝･縺吶ｋ
-const CACHE = 'fridge-v16';
+const CACHE = 'fridge-v17';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
