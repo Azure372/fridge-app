@@ -137,7 +137,7 @@
   .panel .inp input{width:90px;padding:8px}
   .panel.danger .btns button{flex:1;min-width:120px;padding:12px}
   .seg{display:flex;background:#e5e7eb;border-radius:10px;padding:3px;margin-bottom:8px}
-  .seg button{flex:1;border:0;background:none;padding:9px 4px;border-radius:8px;font-size:14px;color:var(--sub);cursor:pointer}
+  .seg button{flex:1;border:0;background:none;padding:9px 2px;border-radius:8px;font-size:13px;white-space:nowrap;min-width:0;color:var(--sub);cursor:pointer}
   .seg button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.1)}
   .loctag{font-size:11px;padding:1px 6px;border-radius:6px;background:var(--none-bg);color:var(--sub)}
   .pgroup{margin-top:12px}
@@ -178,8 +178,9 @@
 <!-- 一覧 -->
 <section id="tab-list" class="active">
   <div class="seg" id="groupSeg">
-    <button data-g="all" class="on">すべて</button>
+    <button data-g="all" class="on" style="flex:.7">すべて</button>
     <button data-g="fridge">🧊 冷蔵庫</button>
+    <button data-g="freezer">❄️ 冷凍庫</button>
     <button data-g="stock">🗄️ ストック</button>
   </div>
   <input type="search" id="search" placeholder="名前で検索" style="margin-bottom:8px">
@@ -391,6 +392,15 @@
       <p>データはこの端末のブラウザ内に保存されます。家族や別の端末と同じ冷蔵庫を見たいときは「家族と共有する」を見てください。</p>
     </details>
     <details>
+      <summary>冷凍庫（冷凍する・解凍する）</summary>
+      <p>保存場所が「冷凍」のものは<b>冷凍庫</b>として扱われ、一覧の上の「❄️ 冷凍庫」で冷蔵庫の中身と分けて見られます（上部の件数も 🧊冷蔵庫・❄️冷凍庫・🗄️ストック の3つに分かれます）。</p>
+      <ul>
+        <li><b>❄️ 冷凍する</b>：冷蔵庫の食材のカードにあります。期限は「冷凍した日から」の目安（2週間・1か月・2か月・3か月。肉や魚などは1か月が初期値）に置き換わり、カードに「11/18に冷凍（3日目）」と出ます。量を減らすと一部だけ冷凍でき、残りは冷蔵庫に残ります（例：鶏肉300gのうち100gだけ冷凍）。</li>
+        <li><b>🧊 解凍する</b>：冷凍庫のカードにあります。冷凍前の場所（なければ冷蔵）に戻し、期限を「今日中」「明日まで」「2日後まで」から選びます。解凍したものは早めに使ってください。</li>
+        <li>どちらも6秒間は「元に戻す」ができます。追加タブで保存場所を「冷凍」にして登録した場合も冷凍庫に入り、期限は冷凍の目安になります（パッケージに冷凍の期限があればそちらを入れてください）。</li>
+      </ul>
+    </details>
+    <details>
       <summary>冷蔵庫以外の在庫（ストック）</summary>
       <p>調味料・お菓子・飲み物の買い置き・日用品など、冷蔵庫に入っていないものも同じように登録できます。保存場所を「常温」「お菓子」「日用品」にすると<b>ストック</b>として扱われ（登録ボタンも「ストックに入れる」に変わります）、一覧の上の「🗄️ ストック」で冷蔵庫の中身と分けて見られます。</p>
       <ul>
@@ -513,8 +523,15 @@ const COOKED = '作った料理';
 const isCooked = it => it && it.cat===COOKED;
 const LOCS = ['冷蔵','冷凍','野菜室','常温','お菓子','日用品'];
 const FRIDGE_LOCS = ['冷蔵','冷凍','野菜室'];
-const groupOf = it => FRIDGE_LOCS.includes(it.loc) ? 'fridge' : 'stock';
-const GROUP_NAME = {fridge:'冷蔵庫', stock:'ストック'};
+// 枠: 冷蔵庫（冷蔵・野菜室）/ 冷凍庫（冷凍）/ ストック（常温・お菓子・日用品）
+const groupOfLoc = loc => loc==='冷凍'? 'freezer' : FRIDGE_LOCS.includes(loc)? 'fridge' : 'stock';
+const groupOf = it => groupOfLoc(it.loc);
+const GROUP_ICON = {fridge:'🧊', freezer:'❄️', stock:'🗄️'};
+const GROUP_NAME = {fridge:'冷蔵庫', freezer:'冷凍庫', stock:'ストック'};
+// 冷凍したときの期限の目安（冷凍した日から）
+const FREEZE_DAYS = {'肉':30,'魚':30,'作った料理':30,'主食・パン':30,'野菜':30,'大豆・加工品':30,'乳製品・卵':30,'お菓子':60};
+const freezeDays = it => FREEZE_DAYS[it.cat] || 30;
+const md = s => s? s.slice(5).replace('-','/') : '';
 // よく買うもの: [名前, 分類, 目安日数, 単位, 保存場所]
 const PRESETS = [
   ['牛乳','乳製品・卵',7,'本','冷蔵'],['卵','乳製品・卵',14,'個','冷蔵'],['ヨーグルト','乳製品・卵',10,'個','冷蔵'],['チーズ','乳製品・卵',20,'袋','冷蔵'],['バター','乳製品・卵',60,'個','冷蔵'],
@@ -632,8 +649,8 @@ $('#search').oninput = e=>{ search=e.target.value.trim(); renderList(); };
 function renderSummary(){
   const c = {expired:0,urgent:0,soon:0,ok:0,none:0};
   state.items.forEach(i=>c[statusOf(i)]++);
-  const nf = state.items.filter(i=>groupOf(i)==='fridge').length, ns = state.items.length - nf;
-  $('#summary').innerHTML = `<span class="pill none">🧊 ${nf}品 ・ 🗄️ ${ns}品</span>` +
+  const cnt = g => state.items.filter(i=>groupOf(i)===g).length;
+  $('#summary').innerHTML = `<span class="pill none">🧊 ${cnt('fridge')}品 ・ ❄️ ${cnt('freezer')}品 ・ 🗄️ ${cnt('stock')}品</span>` +
     ['expired','urgent','soon'].filter(k=>c[k]).map(k=>`<span class="pill ${k}">${STATUS_NAME[k]} ${c[k]}</span>`).join('');
   const alert = c.expired + c.urgent;
   const nb = document.querySelector('nav button[data-tab="list"]');
@@ -641,7 +658,7 @@ function renderSummary(){
 }
 let group = 'all';
 function renderFilters(){
-  const locs = group==='fridge'? FRIDGE_LOCS : group==='stock'? LOCS.filter(l=>!FRIDGE_LOCS.includes(l)) : [];
+  const locs = group==='fridge'? ['冷蔵','野菜室'] : group==='stock'? LOCS.filter(l=>!FRIDGE_LOCS.includes(l)) : [];
   const present = new Set(state.items.filter(i=>group==='all'||groupOf(i)===group).map(i=>i.cat));
   const fs = [['all','すべて'],['alert','期限切れ・近い'],...locs.map(l=>[l,'📍'+l]),...CATS.filter(c=>present.has(c)).map(c=>[c,(CAT_EMOJI[c]||'')+c])];
   $('#filters').innerHTML = fs.map(([k,v])=>`<button type="button" class="chip ${filter===k?'on':''}" aria-pressed="${filter===k}" data-f="${k}">${v}</button>`).join('');
@@ -663,7 +680,7 @@ function renderList(){
   else if(CATS.includes(filter)) items=items.filter(i=>i.cat===filter);
   if(search) items=items.filter(i=>i.name.includes(search));
   if(!items.length){
-    if(state.items.length){ $('#itemList').innerHTML = `<div class="empty">${group==='stock'?'ストックはまだありません。<br>追加タブで「お菓子」「調味料」「日用品」などを登録すると、ここにまとまります。':'該当するものはありません'}</div>`; return; }
+    if(state.items.length){ $('#itemList').innerHTML = `<div class="empty">${group==='stock'?'ストックはまだありません。<br>追加タブで「お菓子」「調味料」「日用品」などを登録すると、ここにまとまります。':group==='freezer'?'冷凍庫は空です。<br>冷蔵庫の食材の「❄️ 冷凍する」か、追加タブで保存場所「冷凍」を選ぶと、ここにまとまります。':'該当するものはありません'}</div>`; return; }
     $('#itemList').innerHTML = `<div class="welcome">
       <h2>🧊 ようこそ！冷蔵庫管理の始め方</h2>
       <ol>
@@ -687,10 +704,11 @@ function renderList(){
     return `<div class="card item ${st}" data-id="${i.id}">
       <div class="body">
         <div class="name">${isCooked(i)?'🍲 ':''}${esc(i.name)} <span style="font-weight:400;font-size:13px;color:var(--sub)">${fmtQty(i.qty)}${esc(i.unit)}</span>${i.staple?' <span class="chip tag" style="font-size:10px;padding:1px 6px">常備</span>':''}</div>
-        <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ <span class="loctag">${groupOf(i)==='fridge'?'🧊':'🗄️'} ${esc(i.loc)}</span> ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
+        <div class="meta"><span class="pill ${st}">${expLabel(i)}</span> ${i.exp? i.exp.replace(/-/g,'/'):''} ・ <span class="loctag">${GROUP_ICON[groupOf(i)]} ${esc(i.loc)}</span>${i.frozen && i.loc==='冷凍'? ` ・ <span class="loctag">${md(i.frozen)}に冷凍（${Math.max(0,-daysLeft(i.frozen))+1}日目）</span>`:''}${i.thawed && i.loc!=='冷凍'? ` ・ <span class="loctag">${md(i.thawed)} 解凍</span>`:''} ・ ${esc(i.cat)}${i.memo?' ・ '+esc(i.memo):''}</div>
         <div class="actions">
           <button class="sm primary" data-act="dec">${isCooked(i)?'食べた':'減らす'}</button>
           ${state.shopping.some(s=>s.name===i.name && !s.done)? '<button class="sm" disabled style="opacity:.6">✓ 買い物リスト済み</button>' : '<button class="sm" data-act="shop">🛒 買い物リストへ</button>'}
+          ${groupOf(i)==='fridge'? '<button class="sm" data-act="freeze">❄️ 冷凍する</button>' : groupOf(i)==='freezer'? '<button class="sm" data-act="thaw">🧊 解凍する</button>' : ''}
           <button class="sm" data-act="edit">編集</button>
           <button class="sm" data-act="more" style="margin-left:auto">使い切った・捨てた…</button>
         </div>
@@ -718,6 +736,23 @@ function renderPanel(i){
       <div class="inp"><span class="hint" style="margin:0">残りを直接入力:</span><input type="number" min="0" step="any" value="${fmtQty(i.qty)}" data-role="rest"><span>${esc(i.unit)}</span><button class="sm" data-act="setrest">決定</button><button class="sm" data-act="close" style="margin-left:auto">閉じる</button></div>
     </div>`;
   }
+  if(openPanel.kind==='freeze'){
+    const dd=freezeDays(i), opts=[[14,'2週間'],[30,'1か月'],[60,'2か月'],[90,'3か月']];
+    return `<div class="panel">
+      <div class="hint">冷凍庫に移します。期限は<b>冷凍した日（今日）から</b>の目安に置き換わります（元の期限 ${i.exp? md(i.exp) : 'なし'} は解凍・取り消し用に覚えておきます）。</div>
+      <div class="btns" data-role="fdays">${opts.map(([n,l])=>`<button class="sm ${n===dd?'primary':''}" data-act="fdays" data-n="${n}" aria-pressed="${n===dd}">${l}${n===dd?'（目安）':''}</button>`).join('')}</div>
+      <div class="inp"><span class="hint" style="margin:0">冷凍する量:</span><input type="number" min="0" step="any" value="${fmtQty(i.qty)}" data-role="fqty"><span>${esc(i.unit)}</span><span class="hint" style="margin:0">（一部だけなら減らす）</span></div>
+      <div class="btns" style="margin-top:8px"><button class="sm primary" data-act="dofreeze" data-n="${dd}">❄️ 冷凍する</button><button class="sm" data-act="close">キャンセル</button></div>
+      <div class="hint" data-role="ferr" style="color:var(--expired);display:none;margin-top:6px"></div>
+    </div>`;
+  }
+  if(openPanel.kind==='thaw'){
+    const back = i.preFreeze && i.preFreeze.loc && i.preFreeze.loc!=='冷凍'? i.preFreeze.loc : '冷蔵';
+    return `<div class="panel">
+      <div class="hint">冷凍庫から出して「${back}」に移します。解凍したものは早めに使い切ってください。期限をいつにしますか？</div>
+      <div class="btns">${[[0,'今日中'],[1,'明日まで'],[2,'2日後まで']].map(([n,l])=>`<button class="sm ${n===1?'primary':''}" data-act="dothaw" data-n="${n}" data-loc="${back}">${l}</button>`).join('')}<button class="sm" data-act="close">キャンセル</button></div>
+    </div>`;
+  }
   return `<div class="panel danger">
     <div class="hint">「${esc(i.name)}」を一覧から消します。押したあと6秒間は「元に戻す」ができます。</div>
     <div class="btns"><button class="sm primary" data-act="used">使い切った</button><button class="sm danger" data-act="waste">捨てた（廃棄）</button><button class="sm" data-act="close">キャンセル</button></div>
@@ -728,7 +763,14 @@ $('#itemList').onclick = e=>{
   const id=card.dataset.id; const item=state.items.find(i=>i.id===id); if(!item) return;
   const act=b.dataset.act;
   const setQty=(q)=>{ q=Math.max(0, +(+q).toFixed(2)); if(q<=0){ finish(item,'used'); return; } item.qty=q; touch(item); save(); renderAll(); toast(`${item.name} 残り ${fmtQty(q)}${item.unit}`); };
-  if(act==='dec'||act==='more'){ openPanel = (openPanel && openPanel.id===id && openPanel.kind===act)? null : {id, kind:act}; renderList(); }
+  if(act==='fdays'){ card.querySelectorAll('[data-act=fdays]').forEach(x=>{ const on=x===b; x.classList.toggle('primary',on); x.setAttribute('aria-pressed',on); }); card.querySelector('[data-act=dofreeze]').dataset.n=b.dataset.n; return; }
+  if(act==='dofreeze'){
+    const q=Number(card.querySelector('input[data-role=fqty]').value), err=card.querySelector('[data-role=ferr]');
+    if(!isFinite(q) || q<=0 || q>item.qty+1e-9){ err.textContent=`冷凍する量は 0 より大きく、今の量（${fmtQty(item.qty)}${item.unit}）以下で入力してください`; err.style.display='block'; return; }
+    freezeItem(item, +b.dataset.n, q); return;
+  }
+  if(act==='dothaw'){ thawItem(item, +b.dataset.n, b.dataset.loc); return; }
+  if(act==='dec'||act==='more'||act==='freeze'||act==='thaw'){ openPanel = (openPanel && openPanel.id===id && openPanel.kind===act)? null : {id, kind:act}; renderList(); }
   else if(act==='close'){ openPanel=null; renderList(); }
   else if(act==='sub'){ setQty(item.qty - +b.dataset.n); }
   else if(act==='half'){ setQty(item.qty/2); }
@@ -739,6 +781,31 @@ $('#itemList').onclick = e=>{
   else if(act==='shop'){ addShop(item.name); renderList(); toast(`買い物リストに「${item.name}」を入れました（在庫はそのまま）`); }
   else if(act==='edit'){ editItem(item); }
 };
+// 冷凍: 全量なら同じ在庫を冷凍庫へ移し、一部なら冷凍分を別の在庫として分ける。期限は冷凍日からの目安に置き換える
+function freezeItem(item, days, q){
+  openPanel=null;
+  const before=JSON.parse(JSON.stringify(item)); let target=item, created=null;
+  const part = q < item.qty - 1e-9;
+  if(part){ created=touch(Object.assign(JSON.parse(JSON.stringify(item)), {id:uid(), qty:+q.toFixed(2), added:todayStr()})); delete created.purchaseId; item.qty=+(item.qty-q).toFixed(2); touch(item); state.items.push(created); target=created; }
+  target.preFreeze={loc:item.loc==='冷凍'?'冷蔵':before.loc, exp:before.exp||null};
+  target.loc='冷凍'; target.frozen=todayStr(); delete target.thawed; target.exp=addDays(days); touch(target);
+  save(); renderAll();
+  toast(`${item.name}${part? ` ${fmtQty(q)}${item.unit}`:''} を冷凍しました（${md(target.exp)}まで）`, {label:'元に戻す', fn:()=>{
+    if(created){ state.items=state.items.filter(i=>i.id!==created.id); tomb(created.id); }
+    const cur=state.items.find(i=>i.id===item.id); if(cur){ Object.keys(cur).forEach(k=>delete cur[k]); Object.assign(cur, before); touch(cur); }
+    save(); renderAll(); toast(`${item.name} を戻しました`);
+  }});
+}
+function thawItem(item, days, loc){
+  openPanel=null;
+  const before=JSON.parse(JSON.stringify(item));
+  item.loc=loc||'冷蔵'; item.exp=addDays(days); item.thawed=todayStr(); delete item.frozen; delete item.preFreeze; touch(item);
+  save(); renderAll();
+  toast(`${item.name} を解凍して「${item.loc}」に移しました（${md(item.exp)}まで）`, {label:'元に戻す', fn:()=>{
+    const cur=state.items.find(i=>i.id===item.id); if(cur){ Object.keys(cur).forEach(k=>delete cur[k]); Object.assign(cur, before); touch(cur); }
+    save(); renderAll(); toast(`${item.name} を冷凍庫に戻しました`);
+  }});
+}
 // 在庫を一覧から消して履歴に残す（保存・描画はしない）。戻すための情報を返す
 function finishCore(item, type){
   const hist={id:uid(), name:item.name, cat:item.cat, type, date:todayStr(), exp:item.exp||null};
@@ -817,12 +884,12 @@ document.querySelectorAll('#tab-add .chip[data-days]').forEach(c=>c.onclick=()=>
 function resetForm(){ $('#form').reset(); $('#f-id').value=''; $('#f-shopid').value=''; $('#qtyErr').style.display='none'; $('#shopMemoNote').style.display='none'; if(typeof resetBuyFields==='function') resetBuyFields(); if($('#presetCard')) updatePresetCard(); $('#f-qty').value=1; $('#f-unit').value='個'; $('#expHint').textContent=''; $('#formTitle').textContent='冷蔵庫・ストックに追加'; $('#submitBtn').dataset.mode='add'; $('#cancelEdit').style.display='none'; $('#cancelEdit').textContent='キャンセル'; $('#f-cat').value=CATS[1]; updateLeftoverBar(); }
 // 登録ボタンの文言: 保存場所が冷蔵・冷凍・野菜室なら「冷蔵庫に入れる」、常温・お菓子・日用品なら「ストックに入れる」
 // mode: add（通常）/ queue（購入品の登録）/ leftover（作った料理の残り）/ edit（編集）
-const destOf = loc => FRIDGE_LOCS.includes(loc)? '冷蔵庫' : 'ストック';
+const destOf = loc => GROUP_NAME[groupOfLoc(loc)];
 function setSubmitMode(mode){ $('#submitBtn').dataset.mode=mode; updateSubmitLabel(); }
 function updateSubmitLabel(){
   const b=$('#submitBtn'), mode=b.dataset.mode||'add', dest=destOf($('#f-loc').value);
   b.textContent = mode==='edit'? '保存' : mode==='queue'? `${dest}に入れる（次へ）` : mode==='leftover'? `残りを${dest}に入れる` : `${dest}に入れる`;
-  const h=$('#destHint'); if(h) h.textContent = mode==='edit'? '' : `保存場所「${$('#f-loc').value}」なので${dest === '冷蔵庫'? '🧊 冷蔵庫' : '🗄️ ストック'}に入ります（保存場所を変えると切り替わります）`;
+  const h=$('#destHint'); if(h) h.textContent = mode==='edit'? '' : `保存場所「${$('#f-loc').value}」なので${GROUP_ICON[groupOfLoc($('#f-loc').value)]} ${dest}に入ります（保存場所を変えると切り替わります）`;
 }
 function updateLeftoverBar(){
   const on = $('#f-cat').value===COOKED;
@@ -836,7 +903,11 @@ $('#f-cat').addEventListener('change', ()=>{
   if($('#f-cat').value===COOKED && !$('#f-id').value){ $('#f-unit').value='食分'; $('#f-loc').value='冷蔵'; $('#f-exp').value=addDays(3); $('#expHint').textContent='（冷蔵は3日、冷凍は1か月が目安）'; if(!$('#f-memo').value) $('#f-memo').value=`${todayStr().slice(5).replace('-','/')}に作った`; }
   updateLeftoverBar();
 });
-$('#f-loc').addEventListener('change', ()=>{ if($('#f-cat').value===COOKED && !$('#f-id').value){ $('#f-exp').value=addDays($('#f-loc').value==='冷凍'?30:3); } updateLeftoverBar(); });
+$('#f-loc').addEventListener('change', ()=>{
+  if($('#f-cat').value===COOKED && !$('#f-id').value){ $('#f-exp').value=addDays($('#f-loc').value==='冷凍'?30:3); }
+  else if($('#f-loc').value==='冷凍' && !$('#f-id').value){ const d=freezeDays({cat:$('#f-cat').value}); $('#f-exp').value=addDays(d); $('#expHint').textContent=`（冷凍の目安: 今日から${d}日。パッケージに冷凍の期限があればそちらを）`; }
+  updateLeftoverBar();
+});
 $('#f-qty').addEventListener('input', updateLeftoverBar);
 $('#servingChips').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; $('#f-qty').value=c.dataset.serv; updateLeftoverBar(); };
 $('#keepChips').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; $('#f-loc').value=c.dataset.keep; $('#f-exp').value=addDays(c.dataset.keep==='冷凍'?30:3); updateLeftoverBar(); };
@@ -888,9 +959,12 @@ $('#form').onsubmit = e=>{
     }
     // 購入記録: この在庫に紐づく記録があれば更新、なければ入力があるときだけ新規作成。空欄なら既存の記録はそのまま
     if(buy){ const rec=purchases().find(r=>r.id===cur.purchaseId); if(rec){ Object.assign(rec, buy, {itemName:data.name}); touch(rec); } else { const nr=touch(Object.assign({id:uid(), itemName:data.name}, buy)); purchases().push(nr); data.purchaseId=nr.id; } }
+    if(data.loc==='冷凍' && cur.loc!=='冷凍'){ data.frozen=todayStr(); delete cur.thawed; }
+    if(data.loc!=='冷凍' && cur.loc==='冷凍'){ delete cur.frozen; delete cur.preFreeze; }
     touch(Object.assign(cur, data)); toast('保存しました'); save(); resetForm(); showTab('list'); return;
   }
   if(data.cat===COOKED){ data.made=todayStr(); recordCooked(data.name); }
+  if(data.loc==='冷凍') data.frozen=todayStr();
   if(buy){ const nr=touch(Object.assign({id:uid(), itemName:data.name}, buy)); purchases().push(nr); data.purchaseId=nr.id; }
   state.items.push(touch(Object.assign({id:uid(), added:todayStr()}, data)));
   // 買い物リストに同名があればチェック済みに
