@@ -247,6 +247,7 @@
         <button type="submit" class="btn" id="submitBtn" data-mode="add">冷蔵庫に入れる</button>
         <button type="button" class="btn secondary" id="cancelEdit" style="display:none">キャンセル</button>
       </div>
+      <button type="button" class="sm danger" id="deleteEdit" style="display:none;margin-top:12px">🗑️ この食材を削除（間違えて登録した）</button>
     </form>
   </div>
   <div class="card" id="presetCard">
@@ -439,7 +440,7 @@
         <tr><td>減らす</td><td>使った分を選ぶパネルが開く。g や ml なら −50/−100 など、個数なら −1/−2。「半分使った」や残量の直接入力もできる。0になると「使い切った」扱い</td></tr>
         <tr><td>買い物リストへ</td><td>買い物リストに入る（在庫の数は変わらない）。入れたあとは「✓ 買い物リスト済み」になる</td></tr>
         <tr><td>編集</td><td>期限や数量を直す</td></tr>
-        <tr><td>使い切った・捨てた…</td><td>確認パネルが開き、「使い切った」か「捨てた（廃棄）」を選ぶ。押したあと6秒間は画面下の「元に戻す」で取り消せる</td></tr>
+        <tr><td>使い切り・廃棄・削除…</td><td>確認パネルが開き、「使い切った」か「捨てた（廃棄）」を選ぶ。間違えて登録したものは「削除」で消せる（使い切り・廃棄の記録や統計には残らず、常備品でも買い物リストに入らない。その登録で記録した購入価格も一緒に消える）。編集画面の下の「この食材を削除」でも同じ。押したあと6秒間は画面下の「元に戻す」で取り消せる</td></tr>
       </table>
       <p>上のチップで「期限切れ・近い」や保存場所・分類で絞り込めます。</p>
     </details>
@@ -710,7 +711,7 @@ function renderList(){
           ${state.shopping.some(s=>s.name===i.name && !s.done)? '<button class="sm" disabled style="opacity:.6">✓ 買い物リスト済み</button>' : '<button class="sm" data-act="shop">🛒 買い物リストへ</button>'}
           ${groupOf(i)==='fridge'? '<button class="sm" data-act="freeze">❄️ 冷凍する</button>' : groupOf(i)==='freezer'? '<button class="sm" data-act="thaw">🧊 解凍する</button>' : ''}
           <button class="sm" data-act="edit">編集</button>
-          <button class="sm" data-act="more" style="margin-left:auto">使い切った・捨てた…</button>
+          <button class="sm" data-act="more" style="margin-left:auto">使い切り・廃棄・削除…</button>
         </div>
         ${renderPanel(i)}
       </div></div>`;
@@ -756,6 +757,8 @@ function renderPanel(i){
   return `<div class="panel danger">
     <div class="hint">「${esc(i.name)}」を一覧から消します。押したあと6秒間は「元に戻す」ができます。</div>
     <div class="btns"><button class="sm primary" data-act="used">使い切った</button><button class="sm danger" data-act="waste">捨てた（廃棄）</button><button class="sm" data-act="close">キャンセル</button></div>
+    <div class="hint" style="margin:10px 0 6px;border-top:1px solid var(--line);padding-top:8px">間違えて登録した場合は「削除」。使い切り・廃棄の記録や統計には残しません。</div>
+    <div class="btns"><button class="sm danger" data-act="delete">🗑️ 削除（間違えて登録した）</button></div>
   </div>`;
 }
 $('#itemList').onclick = e=>{
@@ -778,6 +781,7 @@ $('#itemList').onclick = e=>{
   else if(act==='setrest'){ const v=card.querySelector('input[data-role=rest]').value; if(v==='') return; setQty(v); }
   else if(act==='used'){ finish(item,'used'); }
   else if(act==='waste'){ finish(item,'waste'); }
+  else if(act==='delete'){ deleteItem(item); }
   else if(act==='shop'){ addShop(item.name); renderList(); toast(`買い物リストに「${item.name}」を入れました（在庫はそのまま）`); }
   else if(act==='edit'){ editItem(item); }
 };
@@ -804,6 +808,21 @@ function thawItem(item, days, loc){
   toast(`${item.name} を解凍して「${item.loc}」に移しました（${md(item.exp)}まで）`, {label:'元に戻す', fn:()=>{
     const cur=state.items.find(i=>i.id===item.id); if(cur){ Object.keys(cur).forEach(k=>delete cur[k]); Object.assign(cur, before); touch(cur); }
     save(); renderAll(); toast(`${item.name} を冷凍庫に戻しました`);
+  }});
+}
+// 削除（間違えて登録した）: 使い切り・廃棄の履歴や統計に残さず、常備品でも買い物リストに入れない。
+// この在庫を登録したときに作った購入記録も、間違いの一部として一緒に消す（他の在庫が参照していれば残す）
+function deleteItem(item){
+  openPanel=null;
+  const rec = item.purchaseId && !state.items.some(i=>i.id!==item.id && i.purchaseId===item.purchaseId) ? purchases().find(r=>r.id===item.purchaseId) : null;
+  state.items = state.items.filter(i=>i.id!==item.id); tomb(item.id);
+  if(rec){ state.purchases = purchases().filter(r=>r.id!==rec.id); tomb(rec.id); }
+  save(); renderAll();
+  toast(`${item.name} を削除しました${rec?'（購入記録も）':''}`, {label:'元に戻す', fn:()=>{
+    state.tombstones=(state.tombstones||[]).filter(t=>t.id!==item.id && (!rec || t.id!==rec.id));
+    touch(item); if(!state.items.some(i=>i.id===item.id)) state.items.push(item);
+    if(rec){ touch(rec); if(!purchases().some(r=>r.id===rec.id)) purchases().push(rec); }
+    save(); renderAll(); toast(`${item.name} を戻しました`);
   }});
 }
 // 在庫を一覧から消して履歴に残す（保存・描画はしない）。戻すための情報を返す
@@ -866,7 +885,8 @@ $('#presets').onclick = e=>{ const c=e.target.closest('.pchip'); if(!c) return;
   if(c.dataset.leftover!==undefined){ offerLeftover(c.dataset.leftover); if(!c.dataset.leftover){ $('#formTitle').textContent='🍲 作った料理の残りを登録'; $('#f-name').value=''; $('#f-name').placeholder='例：カレー'; $('#f-name').focus(); } return; }
   applyPreset(c.dataset.p); $('#form').scrollIntoView({behavior:'smooth', block:'start'}); const n=$('#f-name'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); toast(`${c.dataset.p} を入力しました。期限を確認して「${$('#submitBtn').textContent}」`); };
 // 編集中は追加用の候補一覧を隠す（候補をタップして編集内容を上書きしてしまう事故を防ぐ）
-function updatePresetCard(){ const editing=!!$('#f-id').value, registering=!!$('#f-shopid').value; $('#presetCard').style.display = (editing||registering)? 'none':'block'; $('#editNote').style.display = editing? 'block':'none'; }
+function updatePresetCard(){ const editing=!!$('#f-id').value, registering=!!$('#f-shopid').value; $('#presetCard').style.display = (editing||registering)? 'none':'block'; $('#editNote').style.display = editing? 'block':'none'; $('#deleteEdit').style.display = editing? 'inline-block':'none'; }
+$('#deleteEdit').onclick = ()=>{ const it=state.items.find(i=>i.id===$('#f-id').value); if(!it) return; resetForm(); showTab('list'); deleteItem(it); };
 function applyPreset(name){
   const p = PRESETS.find(x=>x[0]===name); if(!p) return;
   $('#f-name').value=p[0]; $('#f-cat').value=p[1]; $('#f-exp').value=p[2]==null? '' : addDays(p[2]); $('#f-unit').value=p[3]; $('#f-loc').value=p[4];
